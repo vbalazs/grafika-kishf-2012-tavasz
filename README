@@ -1,0 +1,19 @@
+Feladat leírása:
+Készítsen sípálya tervező programot!
+
+A terep felülnézetben 10km x 10km-es négyzet, a magasságfüggvényt tetszés szerinti folytonos, differenciálható függvénnyel definiálhatja, amelynek maximuma 1 km, minimuma pedig 0, és a maximum, illetve a minimum a tartomány belsejében található. A program indításakor a terepet felülnézetben jeleníti meg, szürkeárnyalatos képként, ahol a maximális intenzitás az 1km magasságnak, a fekete pedig a 0-ás tengerszintnek felel meg.
+
+Az egér bal gombjának lenyomásával egy pontot jelölhet ki a terepen, ahonnan egy sípályát generálunk felülnézetből 100 m-es egyenes szakaszokból úgy, hogy
+* a sípálya mindig a legmeredekebb lejtő felé (a gradienssel analitikusan számítandó) fordul
+* egy-egy szakasz színe fekete, ha a meredekség legalább 40 fokos, piros, ha 20-40 fok között van, és kék, ha 20 fok alatti.
+* a sípálya befejeződik, ha nem lehet tovább lefele csúszni
+
+Egy sípálya max 20 szakaszból állhat, a program max 10 sípályát kezel egyszerre.
+
+Az 's' betű lenyomására mindig a következő pálya tetejéről egy újabb sízőt indíthat el, amely fekete pályán 40 km/h-val, piroson 20 km/h-val, kéken 10 km/h-val siklik, a pálya végén pedig eltűnik. A sízőt egy egyenlőszárú háromszöggel jelenítse meg, amelynek a csúcsa a haladási irányba mutat. A program max 10 sízőt képes egyszerre szimulálni.
+
+A felhasználható OpenGL függvények csak azok, amelyek a "Grafikus alap hw/sw" diákban szerepelnek.
+
+Kép: lasd: hazi1.png
+
+A forráskód licensze: GPLv3
