@@ -139,14 +139,26 @@ Color image[screenWidth*screenHeight]; // egy alkalmazás ablaknyi kép
 
 // Inicializacio, a program futasanak kezdeten, az OpenGL kontextus letrehozasa utan hivodik meg (ld. main() fv.)
 
+double calculateHeightValue(double x, double y) {
+    return sin(2 * x) + cos(3 * y) + (double) (x * y) / 8.0;
+}
+
+void generateSkiParadise() {
+    for (int y = 0; y < screenHeight; y++) {
+        for (int x = 0; x < screenWidth; x++) {
+            double height = calculateHeightValue(x / 100.0, y / 100.0);
+            //height: 0..4,5
+            //0: black (0,0,0) -> 4.5: white (1,1,1)
+            float greyCode = (float) (height * 0.2222f);
+            image[y * screenWidth + x] = Color(greyCode, greyCode, greyCode);
+        }
+    }
+}
+
 void onInitialization() {
     glViewport(0, 0, screenWidth, screenHeight);
 
-    // Peldakent keszitunk egy kepet az operativ memoriaba
-    for (int Y = 0; Y < screenHeight; Y++)
-        for (int X = 0; X < screenWidth; X++)
-            image[Y * screenWidth + X] = Color((float) X / screenWidth, (float) Y / screenHeight, 0);
-
+    generateSkiParadise();
 }
 
 // Rajzolas, ha az alkalmazas ablak ervenytelenne valik, akkor ez a fuggveny hivodik meg
@@ -159,13 +171,12 @@ void onDisplay() {
 
     // Peldakent atmasoljuk a kepet a rasztertarba
     glDrawPixels(screenWidth, screenHeight, GL_RGB, GL_FLOAT, image);
-    // Majd rajzolunk egy kek haromszoget
-    glColor3f(0, 0, 1);
-    glBegin(GL_TRIANGLES);
-    glVertex2f(-0.2f, -0.2f);
-    glVertex2f(0.2f, -0.2f);
-    glVertex2f(0.0f, 0.2f);
-    glEnd();
+    //    glColor3f(0, 0, 1);
+    //    glBegin(GL_TRIANGLES);
+    //    glVertex2f(-0.2f, -0.2f);
+    //    glVertex2f(0.2f, -0.2f);
+    //    glVertex2f(0.0f, 0.2f);
+    //    glEnd();
 
     // ...
 
@@ -178,6 +189,7 @@ void onDisplay() {
 void onKeyboard(unsigned char key, int x, int y) {
     if (key == 'd') glutPostRedisplay(); // d beture rajzold ujra a kepet
 
+    //'s' lenyomasra a kovetkezo palyarol sielo inditasa
 }
 
 // Eger esemenyeket lekezelo fuggveny
@@ -185,6 +197,8 @@ void onKeyboard(unsigned char key, int x, int y) {
 void onMouse(int button, int state, int x, int y) {
     if (button == GLUT_LEFT && state == GLUT_DOWN) // A GLUT_LEFT_BUTTON / GLUT_RIGHT_BUTTON illetve GLUT_DOWN / GLUT_UP
         glutPostRedisplay(); // Ilyenkor rajzold ujra a kepet
+
+    //ha meg nincs 10 palya: palya generalas a pontbol
 }
 
 // `Idle' esemenykezelo, jelzi, hogy az ido telik, az Idle esemenyek frekvenciajara csak a 0 a garantalt minimalis ertek
@@ -192,6 +206,7 @@ void onMouse(int button, int state, int x, int y) {
 void onIdle() {
     long time = glutGet(GLUT_ELAPSED_TIME); // program inditasa ota eltelt ido
 
+    //sielo mozgatasa, ha van
 }
 
 // ...Idaig modosithatod
