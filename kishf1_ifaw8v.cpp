@@ -140,7 +140,8 @@ Color image[screenWidth*screenHeight]; // egy alkalmazás ablaknyi kép
 // Inicializacio, a program futasanak kezdeten, az OpenGL kontextus letrehozasa utan hivodik meg (ld. main() fv.)
 
 double calculateHeightValue(double x, double y) {
-    return sin(2 * x) + cos(3 * y) + (double) (x * y) / 8.0;
+    return sin(2 * x - sin(2 * y)) + cos(3 * y) + sin(x + 0.25)
+            + cos(2 * y - sin(x)) + (double) (x * y) / 8.0;
 }
 
 void generateSkiParadise() {
