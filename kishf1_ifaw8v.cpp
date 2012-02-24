@@ -43,6 +43,8 @@
 
 #include <math.h>
 #include <stdlib.h>
+#include <iostream>
+using namespace std;
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__)
 // MsWindows-on ez is kell
@@ -136,30 +138,71 @@ const int screenHeight = 600;
 
 Color image[screenWidth*screenHeight]; // egy alkalmazás ablaknyi kép
 
+const double VARIABLE_PIXEL_RATE = 100.0;
+const int LINES_SIZE = 400;
+Vector lines[LINES_SIZE]; //10 pálya * 20 szakasz * 2 koord
 
-// Inicializacio, a program futasanak kezdeten, az OpenGL kontextus letrehozasa utan hivodik meg (ld. main() fv.)
+int tracks = 0; // sípályák száma
 
-double calculateHeightValue(double x, double y) {
-    return sin(2 * x - sin(2 * y)) + cos(3 * y) + sin(x + 0.25)
-            + cos(2 * y - sin(x)) + (double) (x * y) / 8.0;
+bool fequals(float f1, float f2) {
+    if (fabs(f1 - f2) < 0.001) return true;
+    return false;
+}
+
+Vector convertPixelsToVariable(const Vector pixel) {
+    return Vector(pixel.x / VARIABLE_PIXEL_RATE, pixel.y / VARIABLE_PIXEL_RATE);
+}
+
+Vector convertPixelsToGl(const Vector pixel) {
+    const double x = (pixel.x - screenWidth / 2.0) / ((double) screenWidth / 2.0);
+    const double y = (pixel.y - screenHeight / 2.0) / ((double) screenHeight / 2.0);
+    return Vector(x, y * -1.0);
+}
+
+Vector convertVariableToGl(const Vector variable) {
+    const Vector pixel(variable.x * VARIABLE_PIXEL_RATE, variable.y * VARIABLE_PIXEL_RATE);
+
+    return convertPixelsToGl(pixel);
+}
+
+double calculateHeightValueFromPixel(const Vector pixel) {
+    const Vector v = convertPixelsToVariable(pixel);
+    return sin(2 * v.x) + cos(3 * v.y) + (v.x * v.y) / 8.0;
 }
 
 void generateSkiParadise() {
     for (int y = 0; y < screenHeight; y++) {
         for (int x = 0; x < screenWidth; x++) {
-            double height = calculateHeightValue(x / 100.0, y / 100.0);
+            const double height = calculateHeightValueFromPixel(Vector(x, y));
             //height: 0..4,5
             //0: black (0,0,0) -> 4.5: white (1,1,1)
-            float greyCode = (float) (height * 0.2222f);
+            const float greyCode = (float) (height * 0.2222f);
             image[y * screenWidth + x] = Color(greyCode, greyCode, greyCode);
         }
     }
+}
+
+Vector getGradient(const Vector v) {
+    const double x = 2 * cos(2 * v.x) + v.y / 8.0; // d/dx f(v)
+    const double y = v.x / 8.0 - 3 * sin(3 * v.y); // d/dy f(v)
+
+    cout << "getGradient: x=" << x << "; y=" << y << endl;
+
+    return Vector(x, y);
 }
 
 void onInitialization() {
     glViewport(0, 0, screenWidth, screenHeight);
 
     generateSkiParadise();
+
+    //debug
+    //x tengely
+    lines[0] = Vector(-1.0f, 0.0f);
+    lines[1] = Vector(1.0f, 0.0f);
+    //y tengely
+    lines[2] = Vector(0.0f, 1.0f);
+    lines[3] = Vector(0.0f, -1.0f);
 }
 
 // Rajzolas, ha az alkalmazas ablak ervenytelenne valik, akkor ez a fuggveny hivodik meg
@@ -172,12 +215,16 @@ void onDisplay() {
 
     // Peldakent atmasoljuk a kepet a rasztertarba
     glDrawPixels(screenWidth, screenHeight, GL_RGB, GL_FLOAT, image);
-    //    glColor3f(0, 0, 1);
-    //    glBegin(GL_TRIANGLES);
-    //    glVertex2f(-0.2f, -0.2f);
-    //    glVertex2f(0.2f, -0.2f);
-    //    glVertex2f(0.0f, 0.2f);
-    //    glEnd();
+
+    glColor3f(0, 0, 1);
+    glBegin(GL_LINES);
+
+    for (int i = 0; i < LINES_SIZE; i = i + 2) {
+        glVertex2f(lines[i].x, lines[i].y);
+        glVertex2f(lines[i + 1].x, lines[i + 1].y);
+    }
+
+    glEnd();
 
     // ...
 
@@ -196,10 +243,25 @@ void onKeyboard(unsigned char key, int x, int y) {
 // Eger esemenyeket lekezelo fuggveny
 
 void onMouse(int button, int state, int x, int y) {
-    if (button == GLUT_LEFT && state == GLUT_DOWN) // A GLUT_LEFT_BUTTON / GLUT_RIGHT_BUTTON illetve GLUT_DOWN / GLUT_UP
-        glutPostRedisplay(); // Ilyenkor rajzold ujra a kepet
+    if (button == GLUT_LEFT && state == GLUT_DOWN) {
+        //ha meg nincs 10 palya: palya generalas a pontbol
 
-    //ha meg nincs 10 palya: palya generalas a pontbol
+        Vector pixel(x, y);
+
+        Vector grad = getGradient(convertPixelsToVariable(pixel));
+        lines[4] = convertPixelsToGl(pixel);
+        lines[5] = convertVariableToGl(grad);
+//        lines[5] = Vector(0.0, 0.0);
+
+        cout << lines[5].x << ", " << lines[5].y << endl;
+
+        if (tracks < 10) {
+            ++tracks;
+
+        }
+
+        glutPostRedisplay(); // Ilyenkor rajzold ujra a kepet
+    }
 }
 
 // `Idle' esemenykezelo, jelzi, hogy az ido telik, az Idle esemenyek frekvenciajara csak a 0 a garantalt minimalis ertek
