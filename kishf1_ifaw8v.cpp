@@ -139,8 +139,9 @@ const int screenHeight = 600;
 Color image[screenWidth*screenHeight]; // egy alkalmazás ablaknyi kép
 
 const double VARIABLE_PIXEL_RATE = 100.0;
+const int SECTION_PER_TRACK = 20;
 const int LINES_SIZE = 400;
-Vector lines[LINES_SIZE]; //10 pálya * 20 szakasz * 2 koord
+Vector linesCoords[LINES_SIZE]; //10 pálya * 20 szakasz * 2 koord
 Color lineColors[LINES_SIZE / 2];
 
 int tracks = 0; // sípályák száma
@@ -183,21 +184,23 @@ void generateSkiParadise() {
     }
 }
 
-const Vector getGradientVarVector(const Vector pixel) {
-    const Vector v = convertPixelsToVariable(pixel);
+const Vector getGradientVarVector(const Vector varFrom) {
 
-    const double x = 2 * cos(2 * v.x) + v.y / 8.0; // d/dx f(v)
-    const double y = v.x / 8.0 - 3 * sin(3 * v.y); // d/dy f(v)
+    const double x = 2 * cos(2 * varFrom.x) + varFrom.y / 8.0; // d/dx f(v)
+    const double y = varFrom.x / 8.0 - 3 * sin(3 * varFrom.y); // d/dy f(v)
 
     return Vector(x, y);
 }
 
-const Vector getDropVarVector(const Vector pixel) {
-    const Vector varClicked = convertPixelsToVariable(pixel);
-    const Vector varGradPos = getGradientVarVector(pixel);
+const Vector getDropVarVector(Vector varClicked) {
+    Vector varGradPos = getGradientVarVector(varClicked);
 
-    Vector dropVarVector = Vector(varClicked.x + (varClicked.x - varGradPos.x),
-            varClicked.y + (varClicked.y - varGradPos.y) );
+    const double gradLength = (varClicked - varGradPos).Length();
+    //variable: 6 = 10 000 m -> /100 -> 100m
+    const double multiplier = screenWidth / VARIABLE_PIXEL_RATE / 100;
+
+    const Vector dropVarVector = Vector(varClicked.x + ((varClicked.x - varGradPos.x) / gradLength) * multiplier,
+            varClicked.y + ((varClicked.y - varGradPos.y) / gradLength) * multiplier);
 
     return dropVarVector;
 }
@@ -206,17 +209,6 @@ void onInitialization() {
     glViewport(0, 0, screenWidth, screenHeight);
 
     generateSkiParadise();
-
-    //debug
-    //x tengely
-    lines[0] = Vector(-1.0, 0.0);
-    lines[1] = Vector(1.0, 0.0);
-    //y tengely
-    lines[2] = Vector(0.0, 1.0);
-    lines[3] = Vector(0.0, -1.0);
-
-    lineColors[0] = Color(1.0, 0.0, 0.0);
-    lineColors[1] = Color(1.0, 0.0, 0.0);
 }
 
 // Rajzolas, ha az alkalmazas ablak ervenytelenne valik, akkor ez a fuggveny hivodik meg
@@ -232,12 +224,16 @@ void onDisplay() {
 
     glBegin(GL_LINES);
 
-    for (int i = 0; i < LINES_SIZE; i = i + 2) {
+    for (int i = 0; i < tracks * (SECTION_PER_TRACK * 2); i = i + 2) {
         Color c = lineColors[i / 2];
         glColor3f(c.r, c.g, c.b);
 
-        glVertex2f(lines[i].x, lines[i].y);
-        glVertex2f(lines[i + 1].x, lines[i + 1].y);
+        if (!(linesCoords[i].x == 0.0 && linesCoords[i].y == 0.0 &&
+                linesCoords[i + 1].x == 0.0 && linesCoords[i].y == 0.0)) {
+
+            glVertex2f(linesCoords[i].x, linesCoords[i].y);
+            glVertex2f(linesCoords[i + 1].x, linesCoords[i + 1].y);
+        }
     }
 
     glEnd();
@@ -262,20 +258,40 @@ void onMouse(int button, int state, int x, int y) {
     if (button == GLUT_LEFT && state == GLUT_DOWN) {
         //ha meg nincs 10 palya: palya generalas a pontbol
 
-        Vector pixel(x, y);
+        if (tracks < 10) {
+            Vector beginVector = convertPixelsToVariable(Vector(x, y));
+            bool exit = false;
+            int section = 0;
+            int linesFromTrack = tracks * (SECTION_PER_TRACK * 2);
+            cout << endl << "linesFromTrack=" << linesFromTrack << endl;
+            while (!exit && section < 20) {
 
-        Vector grad = getGradientVarVector(pixel);
-        lines[4] = convertPixelsToGl(pixel);
-        lines[5] = convertVariablesToGl(grad);
-        lineColors[2] = Color(0.0, 0.0, 1.0);
+                cout << "tracks=" << tracks << endl;
+                cout << "section=" << section << endl;
 
-        lines[6] = lines[4];
-        lines[7] = convertVariablesToGl(getDropVarVector(pixel));
-        lineColors[3] = Color(0.0, 1.0, 0.0);
+                int index = linesFromTrack + section * 2;
 
-        //        if (tracks < 10) {
-        //            ++tracks;
-        //        }
+                lineColors[index / 2] = Color(1.0, 0.0, 1.0);
+                linesCoords[index] = convertVariablesToGl(beginVector);
+
+                cout << "index=" << index << endl;
+                cout << "linesCoords[" << index << "]=" << linesCoords[index].x;
+                cout << "; y=" << linesCoords[index].y << endl;
+
+                const Vector dropVarVector = getDropVarVector(beginVector);
+                beginVector = dropVarVector;
+
+                linesCoords[index + 1] = convertVariablesToGl(dropVarVector);
+
+                cout << "linesCoords[" << index + 1 << "]=" << linesCoords[index + 1].x;
+                cout << "; y=" << linesCoords[index + 1].y << endl;
+
+                ++section;
+            }
+
+            cout << "tracks=" << tracks << endl;
+            tracks = tracks + 1;
+        }
 
         glutPostRedisplay(); // Ilyenkor rajzold ujra a kepet
     }
@@ -284,9 +300,10 @@ void onMouse(int button, int state, int x, int y) {
 // `Idle' esemenykezelo, jelzi, hogy az ido telik, az Idle esemenyek frekvenciajara csak a 0 a garantalt minimalis ertek
 
 void onIdle() {
+
     long time = glutGet(GLUT_ELAPSED_TIME); // program inditasa ota eltelt ido
 
-    //sielo mozgatasa, ha van
+    //animáció
 }
 
 // ...Idaig modosithatod
