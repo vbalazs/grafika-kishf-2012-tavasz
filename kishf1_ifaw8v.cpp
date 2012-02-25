@@ -141,31 +141,32 @@ Color image[screenWidth*screenHeight]; // egy alkalmazás ablaknyi kép
 const double VARIABLE_PIXEL_RATE = 100.0;
 const int LINES_SIZE = 400;
 Vector lines[LINES_SIZE]; //10 pálya * 20 szakasz * 2 koord
+Color lineColors[LINES_SIZE / 2];
 
 int tracks = 0; // sípályák száma
 
-bool fequals(float f1, float f2) {
+const bool fequals(float f1, float f2) {
     if (fabs(f1 - f2) < 0.001) return true;
     return false;
 }
 
-Vector convertPixelsToVariable(const Vector pixel) {
+const Vector convertPixelsToVariable(const Vector pixel) {
     return Vector(pixel.x / VARIABLE_PIXEL_RATE, pixel.y / VARIABLE_PIXEL_RATE);
 }
 
-Vector convertPixelsToGl(const Vector pixel) {
+const Vector convertPixelsToGl(const Vector pixel) {
     const double x = (pixel.x - screenWidth / 2.0) / ((double) screenWidth / 2.0);
     const double y = (pixel.y - screenHeight / 2.0) / ((double) screenHeight / 2.0);
     return Vector(x, y * -1.0);
 }
 
-Vector convertVariableToGl(const Vector variable) {
+const Vector convertVariablesToGl(const Vector variable) {
     const Vector pixel(variable.x * VARIABLE_PIXEL_RATE, variable.y * VARIABLE_PIXEL_RATE);
 
     return convertPixelsToGl(pixel);
 }
 
-double calculateHeightValueFromPixel(const Vector pixel) {
+const double calculateHeightValueFromPixel(const Vector pixel) {
     const Vector v = convertPixelsToVariable(pixel);
     return sin(2 * v.x) + cos(3 * v.y) + (v.x * v.y) / 8.0;
 }
@@ -182,13 +183,23 @@ void generateSkiParadise() {
     }
 }
 
-Vector getGradient(const Vector v) {
+const Vector getGradientVarVector(const Vector pixel) {
+    const Vector v = convertPixelsToVariable(pixel);
+
     const double x = 2 * cos(2 * v.x) + v.y / 8.0; // d/dx f(v)
     const double y = v.x / 8.0 - 3 * sin(3 * v.y); // d/dy f(v)
 
-    cout << "getGradient: x=" << x << "; y=" << y << endl;
-
     return Vector(x, y);
+}
+
+const Vector getDropVarVector(const Vector pixel) {
+    const Vector varClicked = convertPixelsToVariable(pixel);
+    const Vector varGradPos = getGradientVarVector(pixel);
+
+    Vector dropVarVector = Vector(varClicked.x + (varClicked.x - varGradPos.x),
+            varClicked.y + (varClicked.y - varGradPos.y) );
+
+    return dropVarVector;
 }
 
 void onInitialization() {
@@ -198,11 +209,14 @@ void onInitialization() {
 
     //debug
     //x tengely
-    lines[0] = Vector(-1.0f, 0.0f);
-    lines[1] = Vector(1.0f, 0.0f);
+    lines[0] = Vector(-1.0, 0.0);
+    lines[1] = Vector(1.0, 0.0);
     //y tengely
-    lines[2] = Vector(0.0f, 1.0f);
-    lines[3] = Vector(0.0f, -1.0f);
+    lines[2] = Vector(0.0, 1.0);
+    lines[3] = Vector(0.0, -1.0);
+
+    lineColors[0] = Color(1.0, 0.0, 0.0);
+    lineColors[1] = Color(1.0, 0.0, 0.0);
 }
 
 // Rajzolas, ha az alkalmazas ablak ervenytelenne valik, akkor ez a fuggveny hivodik meg
@@ -216,10 +230,12 @@ void onDisplay() {
     // Peldakent atmasoljuk a kepet a rasztertarba
     glDrawPixels(screenWidth, screenHeight, GL_RGB, GL_FLOAT, image);
 
-    glColor3f(0, 0, 1);
     glBegin(GL_LINES);
 
     for (int i = 0; i < LINES_SIZE; i = i + 2) {
+        Color c = lineColors[i / 2];
+        glColor3f(c.r, c.g, c.b);
+
         glVertex2f(lines[i].x, lines[i].y);
         glVertex2f(lines[i + 1].x, lines[i + 1].y);
     }
@@ -248,17 +264,18 @@ void onMouse(int button, int state, int x, int y) {
 
         Vector pixel(x, y);
 
-        Vector grad = getGradient(convertPixelsToVariable(pixel));
+        Vector grad = getGradientVarVector(pixel);
         lines[4] = convertPixelsToGl(pixel);
-        lines[5] = convertVariableToGl(grad);
-//        lines[5] = Vector(0.0, 0.0);
+        lines[5] = convertVariablesToGl(grad);
+        lineColors[2] = Color(0.0, 0.0, 1.0);
 
-        cout << lines[5].x << ", " << lines[5].y << endl;
+        lines[6] = lines[4];
+        lines[7] = convertVariablesToGl(getDropVarVector(pixel));
+        lineColors[3] = Color(0.0, 1.0, 0.0);
 
-        if (tracks < 10) {
-            ++tracks;
-
-        }
+        //        if (tracks < 10) {
+        //            ++tracks;
+        //        }
 
         glutPostRedisplay(); // Ilyenkor rajzold ujra a kepet
     }
