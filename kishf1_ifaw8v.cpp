@@ -167,9 +167,32 @@ const Vector convertVariablesToGl(const Vector variable) {
     return convertPixelsToGl(pixel);
 }
 
+const double get100mInVar() {
+    return screenWidth / VARIABLE_PIXEL_RATE / 100;
+}
+
+const double calculateHeightValue(const Vector varVector) {
+    return sin(2 * varVector.x) + cos(3 * varVector.y) + (varVector.x * varVector.y) / 8.0;
+}
+
 const double calculateHeightValueFromPixel(const Vector pixel) {
     const Vector v = convertPixelsToVariable(pixel);
-    return sin(2 * v.x) + cos(3 * v.y) + (v.x * v.y) / 8.0;
+    return calculateHeightValue(v);
+}
+
+const double getDropAngleInDeg(Vector v1, Vector v2) {
+    const double heightDiff = calculateHeightValue(v1) - calculateHeightValue(v2);
+
+    //    cout << "h1=" << calculateHeightValue(v1) << endl;
+    //    cout << "h2=" << calculateHeightValue(v2) << endl;
+    //    cout << "heightDiff=" << heightDiff << endl;
+
+    double angleInRad = atan(heightDiff / get100mInVar());
+
+    //    cout << "angle=" << angleInRad << " [rad]" << endl;
+    //    cout << "angle=" << angleInRad * (180 / M_PI) << " [deg]" << endl;
+
+    return angleInRad * (180 / M_PI);
 }
 
 void generateSkiParadise() {
@@ -197,10 +220,10 @@ const Vector getDropVarVector(Vector varClicked) {
 
     const double gradLength = (varClicked - varGradPos).Length();
     //variable: 6 = 10 000 m -> /100 -> 100m
-    const double multiplier = screenWidth / VARIABLE_PIXEL_RATE / 100;
+    const double multiplier100m = get100mInVar();
 
-    const Vector dropVarVector = Vector(varClicked.x + ((varClicked.x - varGradPos.x) / gradLength) * multiplier,
-            varClicked.y + ((varClicked.y - varGradPos.y) / gradLength) * multiplier);
+    const Vector dropVarVector = Vector(varClicked.x + ((varClicked.x - varGradPos.x) / gradLength) * multiplier100m,
+            varClicked.y + ((varClicked.y - varGradPos.y) / gradLength) * multiplier100m);
 
     return dropVarVector;
 }
@@ -263,33 +286,47 @@ void onMouse(int button, int state, int x, int y) {
             bool exit = false;
             int section = 0;
             int linesFromTrack = tracks * (SECTION_PER_TRACK * 2);
-            cout << endl << "linesFromTrack=" << linesFromTrack << endl;
+            //            cout << endl << "linesFromTrack=" << linesFromTrack << endl;
             while (!exit && section < 20) {
 
-                cout << "tracks=" << tracks << endl;
-                cout << "section=" << section << endl;
+                //                cout << "tracks=" << tracks << endl;
+                //                cout << "section=" << section << endl;
 
                 int index = linesFromTrack + section * 2;
 
-                lineColors[index / 2] = Color(1.0, 0.0, 1.0);
                 linesCoords[index] = convertVariablesToGl(beginVector);
 
-                cout << "index=" << index << endl;
-                cout << "linesCoords[" << index << "]=" << linesCoords[index].x;
-                cout << "; y=" << linesCoords[index].y << endl;
+                //                cout << "index=" << index << endl;
+                //                cout << "linesCoords[" << index << "]=" << linesCoords[index].x;
+                //                cout << "; y=" << linesCoords[index].y << endl;
 
                 const Vector dropVarVector = getDropVarVector(beginVector);
-                beginVector = dropVarVector;
 
                 linesCoords[index + 1] = convertVariablesToGl(dropVarVector);
 
-                cout << "linesCoords[" << index + 1 << "]=" << linesCoords[index + 1].x;
-                cout << "; y=" << linesCoords[index + 1].y << endl;
+                //beginVarVector -> dropVarVector
+                //alapból kék: 20 fok alatti
+                Color lineColor = Color(0.0, 0.0, 1.0);
+
+                double dropAngle = getDropAngleInDeg(beginVector, dropVarVector);
+
+                if (dropAngle >= 40) { //legalabb 40 fok -> fekete
+                    lineColor.b = 0.0;
+                } else if (dropAngle > 20 && dropAngle < 40) { //20-40 fok kozott -> piros
+                    lineColor.r = 1.0;
+                    lineColor.b = 0.0;
+                }
+
+                lineColors[index / 2] = lineColor;
+
+                beginVector = dropVarVector; //kovetkezo iteraciohoz
+                //                cout << "linesCoords[" << index + 1 << "]=" << linesCoords[index + 1].x;
+                //                cout << "; y=" << linesCoords[index + 1].y << endl;
 
                 ++section;
             }
 
-            cout << "tracks=" << tracks << endl;
+            //            cout << "tracks=" << tracks << endl;
             tracks = tracks + 1;
         }
 
