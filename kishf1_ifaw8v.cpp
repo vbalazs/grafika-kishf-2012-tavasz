@@ -43,8 +43,6 @@
 
 #include <math.h>
 #include <stdlib.h>
-#include <iostream>
-using namespace std;
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__)
 // MsWindows-on ez is kell
@@ -234,7 +232,23 @@ const Vector getDropVarVector(Vector varClicked) {
 double getGlRotateAngleInRad(const Vector glHead, Vector glDrop) {
     Vector helper(glHead.x, glDrop.y);
 
-    return acos((helper - glHead).Length() / (glDrop - glHead).Length());
+    double rad = acos((helper - glHead).Length() / (glDrop - glHead).Length());
+
+    if (glDrop.y > glHead.y) { //1. negyed fix
+        rad = M_PI - rad;
+    }
+
+    if (glDrop.x < glHead.x) {
+        if (glHead.y > 0 && glDrop.y > 0) { //2. negyed fix
+            rad = -rad;
+        }
+
+        if (glHead.y < 0 && glDrop.y < 0) { //4. negyed fix
+            rad = -rad;
+        }
+    }
+
+    return rad;
 }
 
 void rotatePoint(const Vector glBase, Vector& rotate, double angleInRad) {
@@ -256,9 +270,6 @@ void onDisplay() {
     glClearColor(0.1f, 0.2f, 0.3f, 1.0f); // torlesi szin beallitasa
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // kepernyo torles
 
-    // ..
-
-    // Peldakent atmasoljuk a kepet a rasztertarba
     glDrawPixels(screenWidth, screenHeight, GL_RGB, GL_FLOAT, image);
 
     glBegin(GL_LINES);
@@ -294,15 +305,12 @@ void onDisplay() {
 
     glEnd();
 
-    // ...
-
-    glutSwapBuffers(); // Buffercsere: rajzolas vege
+    glutSwapBuffers();
 }
 
 void onKeyboard(unsigned char key, int x, int y) {
-    if (key == 'd') glutPostRedisplay(); // d beture rajzold ujra a kepet
+    if (key == 'd') glutPostRedisplay();
 
-    //'s' lenyomasra a kovetkezo palyarol sielo inditasa
     if (key == 's' && startedSkiers < MAX_SKIERS) {
         startedSkiers++;
         glutPostRedisplay();
@@ -393,12 +401,11 @@ void simulateWorld(long tstart, long tend) {
 
         for (int i = 0; i < startedSkiers; i++) {
             // step skiers
-            //            int skierIndex = i * 3;
+            int skierIndex = i * 3;
             //            skiersCoords[skierIndex] = Vector(skierHead.x, skierHead.y);
             //            skiersCoords[skierIndex + 1] = Vector(skierHead.x + SKIERS_SIZE, skierHead.y + SKIERS_SIZE);
             //            skiersCoords[skierIndex + 2] = Vector(skierHead.x - SKIERS_SIZE, skierHead.y + SKIERS_SIZE);
         }
-
 
     }
 }
