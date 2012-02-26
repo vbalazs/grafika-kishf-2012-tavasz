@@ -132,19 +132,26 @@ struct Color {
     }
 };
 
-const int screenWidth = 600; // alkalmazás ablak felbontása
+const int screenWidth = 600;
 const int screenHeight = 600;
 
-
-Color image[screenWidth*screenHeight]; // egy alkalmazás ablaknyi kép
+Color image[screenWidth*screenHeight];
 
 const double VARIABLE_PIXEL_RATE = 100.0;
 const int SECTION_PER_TRACK = 20;
 const int LINES_SIZE = 400;
-Vector linesCoords[LINES_SIZE]; //10 pálya * 20 szakasz * 2 koord
+Vector linesCoords[LINES_SIZE]; //10 palya * 20 szakasz * 2 koord
 Color lineColors[LINES_SIZE / 2];
 
-int tracks = 0; // sípályák száma
+int tracks = 0; // sipalyak szama
+const int MAX_SKIERS = 10;
+const double SKIERS_SIZE = 0.03;
+Vector skiersCoords[MAX_SKIERS * 3];
+int skiers = 0;
+int startedSkiers = 0;
+
+long time_ = 0;
+bool working = false;
 
 const bool fequals(float f1, float f2) {
     if (fabs(f1 - f2) < 0.001) return true;
@@ -200,11 +207,15 @@ const Vector getGradientVarVector(const Vector varFrom) {
     return Vector(x, y);
 }
 
-const double getDropAngleInDeg(Vector v1, Vector v2) {
+const double getDropAngleInRad(Vector v1, Vector v2) {
     const double heightDiff = calculateHeightValue(v1) - calculateHeightValue(v2);
     const double angleInRad = atan(heightDiff / get100mInVar());
 
-    return angleInRad * (180 / M_PI);
+    return angleInRad;
+}
+
+const double getDropAngleInDeg(Vector v1, Vector v2) {
+    return getDropAngleInRad(v1, v2) * (180 / M_PI);
 }
 
 const Vector getDropVarVector(Vector varClicked) {
@@ -218,6 +229,21 @@ const Vector getDropVarVector(Vector varClicked) {
             varClicked.y + ((varClicked.y - varGradPos.y) / gradLength) * multiplier100m);
 
     return dropVarVector;
+}
+
+double getGlRotateAngleInRad(const Vector glHead, Vector glDrop) {
+    Vector helper(glHead.x, glDrop.y);
+
+    return acos((helper - glHead).Length() / (glDrop - glHead).Length());
+}
+
+void rotatePoint(const Vector glBase, Vector& rotate, double angleInRad) {
+
+    double x = (rotate.x - glBase.x) * cos(angleInRad) - (rotate.y - glBase.y) * sin(angleInRad) + glBase.x;
+    double y = (rotate.x - glBase.x) * sin(angleInRad) + (rotate.y - glBase.y) * cos(angleInRad) + glBase.y;
+
+    rotate.x = x;
+    rotate.y = y;
 }
 
 void onInitialization() {
@@ -242,7 +268,7 @@ void onDisplay() {
         glColor3f(c.r, c.g, c.b);
 
         if (!(linesCoords[i].x == 0.0 && linesCoords[i].y == 0.0 &&
-                linesCoords[i + 1].x == 0.0 && linesCoords[i].y == 0.0)) {
+                linesCoords[i + 1].x == 0.0 && linesCoords[i + 1].y == 0.0)) {
 
             glVertex2f(linesCoords[i].x, linesCoords[i].y);
             glVertex2f(linesCoords[i + 1].x, linesCoords[i + 1].y);
@@ -251,16 +277,36 @@ void onDisplay() {
 
     glEnd();
 
+    //sielok kirajzolasa
+    glColor3f(1.0, 0.0, 1.0);
+    glBegin(GL_TRIANGLES);
+
+    for (int i = 0; i < skiers * 3; i = i + 3) {
+
+        if (!(skiersCoords[i].x == 0.0 && skiersCoords[i].y == 0.0 &&
+                skiersCoords[i + 1].x == 0.0 && skiersCoords[i + 1].y == 0.0)) {
+
+            glVertex2f(skiersCoords[i].x, skiersCoords[i].y);
+            glVertex2f(skiersCoords[i + 1].x, skiersCoords[i + 1].y);
+            glVertex2f(skiersCoords[i + 2].x, skiersCoords[i + 2].y);
+        }
+    }
+
+    glEnd();
+
     // ...
 
     glutSwapBuffers(); // Buffercsere: rajzolas vege
-
 }
 
 void onKeyboard(unsigned char key, int x, int y) {
     if (key == 'd') glutPostRedisplay(); // d beture rajzold ujra a kepet
 
     //'s' lenyomasra a kovetkezo palyarol sielo inditasa
+    if (key == 's' && startedSkiers < MAX_SKIERS) {
+        startedSkiers++;
+        glutPostRedisplay();
+    }
 }
 
 void onMouse(int button, int state, int x, int y) {
@@ -268,22 +314,37 @@ void onMouse(int button, int state, int x, int y) {
         //ha meg nincs 10 palya: palya generalas a pontbol
 
         if (tracks < 10) {
-            Vector beginVector = convertPixelsToVariable(Vector(x, y));
-            bool exit = false;
+            Vector pixel(x, y);
+            Vector beginVector = convertPixelsToVariable(pixel);
+
+            //sielo letrehozasa
+            int skierIndex = skiers * 3;
+            Vector skierHead = convertPixelsToGl(pixel);
+            skiersCoords[skierIndex] = Vector(skierHead.x, skierHead.y);
+            skiersCoords[skierIndex + 1] = Vector(skierHead.x + SKIERS_SIZE, skierHead.y + SKIERS_SIZE);
+            skiersCoords[skierIndex + 2] = Vector(skierHead.x - SKIERS_SIZE, skierHead.y + SKIERS_SIZE);
+
+            //sielo palyaval szembeforditasa
+            double angleInRad = getGlRotateAngleInRad(skierHead, convertVariablesToGl(getDropVarVector(beginVector)));
+            rotatePoint(skierHead, skiersCoords[skierIndex + 1], angleInRad);
+            rotatePoint(skierHead, skiersCoords[skierIndex + 2], angleInRad);
+
+            //kovetkezo sielo
+            skiers++;
+
             int section = 0;
             int linesFromTrack = tracks * (SECTION_PER_TRACK * 2);
-            //            cout << endl << "linesFromTrack=" << linesFromTrack << endl;
-            while (!exit && section < 20) {
+            while (section < 20) {
 
                 const Vector dropVarVector = getDropVarVector(beginVector);
 
-                //leejto vagy emelkedo szakasz jön? emelkedon nem tud felsiklani
+                //leejto vagy emelkedo szakasz jon? emelkedon nem tud felsiklani
                 double h1 = calculateHeightValue(beginVector);
                 double h2 = calculateHeightValue(dropVarVector);
 
-                //a 0. szakaszt rajzolja meg, hogy ne t?njön úgy, hogy nem hoz létre
-                //pályát
-                if (section > 0 && h2 >= h1) {
+                //a 0. szakaszt rajzolja meg, hogy ne tunjon úgy, hogy nem hoz letre
+                //palyat
+                if (section > 0 && (h2 > h1 || fequals(h2, h1))) {
                     break;
                 }
 
@@ -294,7 +355,7 @@ void onMouse(int button, int state, int x, int y) {
                 linesCoords[index + 1] = convertVariablesToGl(dropVarVector);
 
                 //beginVarVector -> dropVarVector
-                //alapból kék: 20 fok alatti
+                //alapból kek: 20 fok alatti
                 Color lineColor = Color(0.0, 0.0, 1.0);
 
                 double dropAngle = getDropAngleInDeg(beginVector, dropVarVector);
@@ -316,17 +377,45 @@ void onMouse(int button, int state, int x, int y) {
             tracks = tracks + 1;
         }
 
-        glutPostRedisplay(); // Ilyenkor rajzold ujra a kepet
+        glutPostRedisplay();
     }
 }
 
-// `Idle' esemenykezelo, jelzi, hogy az ido telik, az Idle esemenyek frekvenciajara csak a 0 a garantalt minimalis ertek
+void simulateWorld(long tstart, long tend) {
+    float dt = 50;
+    for (float ts = tstart; ts < tend; ts += dt) {
+        float te;
+        if (tend >= ts + dt) {
+            te = ts + dt;
+        } else {
+            te = tend;
+        }
+
+        for (int i = 0; i < startedSkiers; i++) {
+            // step skiers
+            //            int skierIndex = i * 3;
+            //            skiersCoords[skierIndex] = Vector(skierHead.x, skierHead.y);
+            //            skiersCoords[skierIndex + 1] = Vector(skierHead.x + SKIERS_SIZE, skierHead.y + SKIERS_SIZE);
+            //            skiersCoords[skierIndex + 2] = Vector(skierHead.x - SKIERS_SIZE, skierHead.y + SKIERS_SIZE);
+        }
+
+
+    }
+}
 
 void onIdle() {
 
-    long time = glutGet(GLUT_ELAPSED_TIME); // program inditasa ota eltelt ido
+    if (!working) {
+        working = true;
+        long old_time = time_;
+        time_ = glutGet(GLUT_ELAPSED_TIME);
 
-    //animáció
+        simulateWorld(old_time, time_);
+
+        working = false;
+    }
+
+    glutPostRedisplay();
 }
 
 // ...Idaig modosithatod
