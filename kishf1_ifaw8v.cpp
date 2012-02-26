@@ -202,15 +202,7 @@ const Vector getGradientVarVector(const Vector varFrom) {
 
 const double getDropAngleInDeg(Vector v1, Vector v2) {
     const double heightDiff = calculateHeightValue(v1) - calculateHeightValue(v2);
-
-    //    cout << "h1=" << calculateHeightValue(v1) << endl;
-    //    cout << "h2=" << calculateHeightValue(v2) << endl;
-    //    cout << "heightDiff=" << heightDiff << endl;
-
     const double angleInRad = atan(heightDiff / get100mInVar());
-
-    //    cout << "angle=" << angleInRad << " [rad]" << endl;
-    //    cout << "angle=" << angleInRad * (180 / M_PI) << " [deg]" << endl;
 
     return angleInRad * (180 / M_PI);
 }
@@ -233,8 +225,6 @@ void onInitialization() {
 
     generateSkiParadise();
 }
-
-// Rajzolas, ha az alkalmazas ablak ervenytelenne valik, akkor ez a fuggveny hivodik meg
 
 void onDisplay() {
     glClearColor(0.1f, 0.2f, 0.3f, 1.0f); // torlesi szin beallitasa
@@ -267,15 +257,11 @@ void onDisplay() {
 
 }
 
-// Billentyuzet esemenyeket lekezelo fuggveny
-
 void onKeyboard(unsigned char key, int x, int y) {
     if (key == 'd') glutPostRedisplay(); // d beture rajzold ujra a kepet
 
     //'s' lenyomasra a kovetkezo palyarol sielo inditasa
 }
-
-// Eger esemenyeket lekezelo fuggveny
 
 void onMouse(int button, int state, int x, int y) {
     if (button == GLUT_LEFT && state == GLUT_DOWN) {
@@ -289,31 +275,21 @@ void onMouse(int button, int state, int x, int y) {
             //            cout << endl << "linesFromTrack=" << linesFromTrack << endl;
             while (!exit && section < 20) {
 
-                //                cout << "tracks=" << tracks << endl;
-                //                cout << "section=" << section << endl;
-
                 const Vector dropVarVector = getDropVarVector(beginVector);
 
                 //leejto vagy emelkedo szakasz jön? emelkedon nem tud felsiklani
                 double h1 = calculateHeightValue(beginVector);
                 double h2 = calculateHeightValue(dropVarVector);
 
+                //a 0. szakaszt rajzolja meg, hogy ne t?njön úgy, hogy nem hoz létre
+                //pályát
                 if (section > 0 && h2 >= h1) {
-                    //                    cout << "h1=" << h1 << endl;
-                    //                    cout << "h2=" << h2 << endl;
-                    //                    cout << "---------------" << endl;
                     break;
                 }
 
                 int index = linesFromTrack + section * 2;
 
                 linesCoords[index] = convertVariablesToGl(beginVector);
-
-                //                cout << "index=" << index << endl;
-                //                cout << "linesCoords[" << index << "]=" << linesCoords[index].x;
-                //                cout << "; y=" << linesCoords[index].y << endl;
-
-
 
                 linesCoords[index + 1] = convertVariablesToGl(dropVarVector);
 
@@ -333,13 +309,10 @@ void onMouse(int button, int state, int x, int y) {
                 lineColors[index / 2] = lineColor;
 
                 beginVector = dropVarVector; //kovetkezo iteraciohoz
-                //                cout << "linesCoords[" << index + 1 << "]=" << linesCoords[index + 1].x;
-                //                cout << "; y=" << linesCoords[index + 1].y << endl;
 
                 ++section;
             }
 
-            //            cout << "tracks=" << tracks << endl;
             tracks = tracks + 1;
         }
 
