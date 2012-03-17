@@ -54,6 +54,10 @@
 // A GLUT-ot le kell tolteni: http://www.opengl.org/resources/libraries/glut/
 #include <GL/glut.h>     
 
+//gyilok!
+#include <iostream>
+using namespace std;
+//
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Innentol modosithatod...
@@ -63,19 +67,19 @@
 //--------------------------------------------------------
 
 struct Vector {
-    float x, y, z;
+    double x, y, z;
 
     Vector() {
         x = y = z = 0;
     }
 
-    Vector(float x0, float y0, float z0 = 0) {
+    Vector(double x0, double y0, double z0 = 0) {
         x = x0;
         y = y0;
         z = z0;
     }
 
-    Vector operator*(float a) {
+    Vector operator*(double a) {
         return Vector(x * a, y * a, z * a);
     }
 
@@ -87,7 +91,7 @@ struct Vector {
         return Vector(x - v.x, y - v.y, z - v.z);
     }
 
-    float operator*(const Vector & v) { // dot product
+    double operator*(const Vector & v) { // dot product
         return (x * v.x + y * v.y + z * v.z);
     }
 
@@ -95,7 +99,7 @@ struct Vector {
         return Vector(y * v.z - z * v.y, z * v.x - x * v.z, x * v.y - y * v.x);
     }
 
-    float Length() {
+    double Length() {
         return sqrt(x * x + y * y + z * z);
     }
 };
@@ -130,11 +134,20 @@ struct Color {
     }
 };
 
+//rasztertár - gyilok!
 const int screenWidth = 600;
 const int screenHeight = 600;
-
 Color image[screenWidth*screenHeight];
 
+//fibonacci
+double fibonacci[100];
+
+//görbék, kontrollpontok
+
+//gorbék szinei
+Color curveColors[10];
+
+//gyilok!
 const double VARIABLE_PIXEL_RATE = 100.0;
 
 long time_ = 0;
@@ -145,52 +158,54 @@ const bool fequals(float f1, float f2) {
     return false;
 }
 
-const Vector convertPixelsToVariable(const Vector pixel) {
-    return Vector(pixel.x / VARIABLE_PIXEL_RATE, pixel.y / VARIABLE_PIXEL_RATE);
-}
-
 const Vector convertPixelsToGl(const Vector pixel) {
     const double x = (pixel.x - screenWidth / 2.0) / ((double) screenWidth / 2.0);
     const double y = (pixel.y - screenHeight / 2.0) / ((double) screenHeight / 2.0);
     return Vector(x, y * -1.0);
 }
 
-const Vector convertVariablesToGl(const Vector variable) {
-    const Vector pixel(variable.x * VARIABLE_PIXEL_RATE, variable.y * VARIABLE_PIXEL_RATE);
-
-    return convertPixelsToGl(pixel);
-}
-
-const double get100mInVar() {
-    return screenWidth / VARIABLE_PIXEL_RATE / 100;
-}
-
-void rotatePoint(const Vector glBase, Vector& rotate, double angleInRad) {
-
-    double x = (rotate.x - glBase.x) * cos(angleInRad) - (rotate.y - glBase.y) * sin(angleInRad) + glBase.x;
-    double y = (rotate.x - glBase.x) * sin(angleInRad) + (rotate.y - glBase.y) * cos(angleInRad) + glBase.y;
-
-    rotate.x = x;
-    rotate.y = y;
+/*
+ * Binet formula
+ */
+const double getFibonacciNr(int n) {
+    double sqrt5 = sqrt(5);
+    return (pow(1 + sqrt5, n) - pow(1 - sqrt5, n)) / (sqrt5 * pow(2, n));
 }
 
 void onInitialization() {
     glViewport(0, 0, screenWidth, screenHeight);
 
+    //fibonacci ertekek feltoltese - Binet formula
+    for (int i = 1; i <= 100; i++) {
+        fibonacci[i] = getFibonacciNr(i);
+        cout << i << ": " << fibonacci[i] << endl;
+    }
+
+    //gorbe szinek tombjenek feltoltese
+    curveColors[0] = Color(1.0, 1.0, 1.0); //black
+    curveColors[1] = Color(1.0, 0.0, 0.0); //red
+    curveColors[2] = Color(0.0, 1.0, 0.0); //green
+    curveColors[3] = Color(0.0, 0.0, 1.0); //blue
+    curveColors[4] = Color(1.0, 1.0, 0.0); //yellow
+    curveColors[5] = Color(1.0, 0.0, 1.0); //pink
+    curveColors[6] = Color(0.0, 1.0, 1.0); //cyan
+    curveColors[7] = Color(0.4, 0.4, 0.4); //grey
+    curveColors[8] = Color(0.627, 0.125, 0.941); //purple
+    curveColors[9] = Color(0.804, 0.36, 0.36); //indian red
 }
 
 void onDisplay() {
-    glClearColor(0.1f, 0.2f, 0.3f, 1.0f); // torlesi szin beallitasa
+    glClearColor(0.8f, 0.8f, 0.8f, 0.0f); // torlesi szin beallitasa
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // kepernyo torles
 
-    glDrawPixels(screenWidth, screenHeight, GL_RGB, GL_FLOAT, image);
+    //glDrawPixels(screenWidth, screenHeight, GL_RGB, GL_FLOAT, image);
 
     glBegin(GL_LINES);
 
-//    Color c = lineColors[i / 2];
-//    glColor3f(c.r, c.g, c.b);
-//    glVertex2f(linesCoords[i].x, linesCoords[i].y);
-//    glVertex2f(linesCoords[i + 1].x, linesCoords[i + 1].y);
+    //    Color c = lineColors[i / 2];
+    //    glColor3f(c.r, c.g, c.b);
+    //    glVertex2f(linesCoords[i].x, linesCoords[i].y);
+    //    glVertex2f(linesCoords[i + 1].x, linesCoords[i + 1].y);
 
     glEnd();
 
@@ -198,7 +213,13 @@ void onDisplay() {
 }
 
 void onKeyboard(unsigned char key, int x, int y) {
-    if (key == 'd') glutPostRedisplay();
+    if (key == 'e') { //szerkesztés mód
+
+    } else if (key == 'p') { //kiválasztás mód
+    } else if (key == 'z') { //zoom out
+    }
+
+    glutPostRedisplay();
 
 }
 
