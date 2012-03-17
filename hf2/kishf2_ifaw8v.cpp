@@ -134,7 +134,7 @@ struct Color {
     }
 };
 
-//rasztertár - gyilok!
+//raster - gyilok!
 const int screenWidth = 600;
 const int screenHeight = 600;
 Color image[screenWidth*screenHeight];
@@ -142,16 +142,27 @@ Color image[screenWidth*screenHeight];
 //fibonacci
 double fibonacci[100];
 
-//görbék, kontrollpontok
+//curves, control points
 
-//gorbék szinei
+//colors of curves
 Color curveColors[10];
 
 //gyilok!
 const double VARIABLE_PIXEL_RATE = 100.0;
 
 long time_ = 0;
+long clickedTime = 0;
+Vector clickedPos;
 bool working = false;
+
+/*
+ * Program mode
+ */
+enum MODE {
+    EDIT, SELECT
+};
+
+MODE programMode = SELECT; //program starts in select mode
 
 const bool fequals(float f1, float f2) {
     if (fabs(f1 - f2) < 0.001) return true;
@@ -165,7 +176,7 @@ const Vector convertPixelsToGl(const Vector pixel) {
 }
 
 /*
- * Binet formula
+ * Binet form
  */
 const double getFibonacciNr(int n) {
     double sqrt5 = sqrt(5);
@@ -175,13 +186,13 @@ const double getFibonacciNr(int n) {
 void onInitialization() {
     glViewport(0, 0, screenWidth, screenHeight);
 
-    //fibonacci ertekek feltoltese - Binet formula
+    //fill up array with fibonacci numbers - Binet form
     for (int i = 1; i <= 100; i++) {
         fibonacci[i] = getFibonacciNr(i);
-        cout << i << ": " << fibonacci[i] << endl;
+        //        cout << i << ": " << fibonacci[i] << endl;
     }
 
-    //gorbe szinek tombjenek feltoltese
+    //fill up array of curves' colors
     curveColors[0] = Color(1.0, 1.0, 1.0); //black
     curveColors[1] = Color(1.0, 0.0, 0.0); //red
     curveColors[2] = Color(0.0, 1.0, 0.0); //green
@@ -195,8 +206,8 @@ void onInitialization() {
 }
 
 void onDisplay() {
-    glClearColor(0.8f, 0.8f, 0.8f, 0.0f); // torlesi szin beallitasa
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // kepernyo torles
+    glClearColor(0.8f, 0.8f, 0.8f, 0.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     //glDrawPixels(screenWidth, screenHeight, GL_RGB, GL_FLOAT, image);
 
@@ -213,9 +224,10 @@ void onDisplay() {
 }
 
 void onKeyboard(unsigned char key, int x, int y) {
-    if (key == 'e') { //szerkesztés mód
-
-    } else if (key == 'p') { //kiválasztás mód
+    if (key == 'e') { //edit mode
+        programMode = EDIT;
+    } else if (key == 'p') { //select mode
+        programMode = SELECT;
     } else if (key == 'z') { //zoom out
     }
 
@@ -224,10 +236,46 @@ void onKeyboard(unsigned char key, int x, int y) {
 }
 
 void onMouse(int button, int state, int x, int y) {
-    if (button == GLUT_LEFT && state == GLUT_DOWN) {
+    
+    if (button == GLUT_LEFT) {
+        if (state == GLUT_DOWN) {
+            //double click?
+            if (time_ - clickedTime < 500
+                    && clickedPos.x == x && clickedPos.y == y) { //0.5s && cursor not moved
+                cout << "end curve" << endl;
+                //end CR cpt input
+            } else { //single click
+                cout << "single click" << endl;
+                //add CR cpt, if not contains 100 points already
+                if (programMode == EDIT) {
+                    cout << "--add CR cpt" << endl;
+                } else if (programMode == SELECT) {
+                    //search for a point of a curve in 10x10px around click position
+                    //if found save coords for moving
+                    cout << "--search for point from here: " << x << "; " << y << endl;
+                }
+            }
 
-        glutPostRedisplay();
+            clickedTime = time_;
+            clickedPos.x = x;
+            clickedPos.y = y;
+        } else if (state == GLUT_UP) {
+            //if moving: move curve to here
+            cout << "left up: if moving move curve to here: " << x << "; " << y << endl;
+        }
+    } else if (button == GLUT_RIGHT_BUTTON) {
+        if (programMode == SELECT) {
+            if (state == GLUT_DOWN) {
+                //search for a point of a curve in 10x10px around click position
+                cout << "right down: search for point from here: " << x << "; " << y << endl;
+            } else if (state == GLUT_UP) {
+                //rotate with vector angle
+                cout << "right up: calc rotate from this coords: " << x << "; " << y << endl;
+            }
+        }
     }
+
+    glutPostRedisplay();
 }
 
 void simulateWorld(long tstart, long tend) {
@@ -237,6 +285,7 @@ void simulateWorld(long tstart, long tend) {
         if (tend >= ts + dt) {
             te = ts + dt;
         } else {
+
             te = tend;
         }
 
@@ -248,6 +297,7 @@ void simulateWorld(long tstart, long tend) {
 void onIdle() {
 
     if (!working) {
+
         working = true;
         long old_time = time_;
         time_ = glutGet(GLUT_ELAPSED_TIME);
