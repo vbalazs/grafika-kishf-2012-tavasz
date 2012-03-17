@@ -236,14 +236,16 @@ void onKeyboard(unsigned char key, int x, int y) {
 }
 
 void onMouse(int button, int state, int x, int y) {
-    
+
     if (button == GLUT_LEFT) {
         if (state == GLUT_DOWN) {
             //double click?
             if (time_ - clickedTime < 500
                     && clickedPos.x == x && clickedPos.y == y) { //0.5s && cursor not moved
-                cout << "end curve" << endl;
-                //end CR cpt input
+                if (programMode == EDIT) {
+                    //end CR cpt input
+                    cout << "end curve" << endl;
+                }
             } else { //single click
                 cout << "single click" << endl;
                 //add CR cpt, if not contains 100 points already
@@ -261,7 +263,9 @@ void onMouse(int button, int state, int x, int y) {
             clickedPos.y = y;
         } else if (state == GLUT_UP) {
             //if moving: move curve to here
-            cout << "left up: if moving move curve to here: " << x << "; " << y << endl;
+            if (programMode == SELECT) {
+                cout << "left up: if moving move curve to here: " << x << "; " << y << endl;
+            }
         }
     } else if (button == GLUT_RIGHT_BUTTON) {
         if (programMode == SELECT) {
