@@ -278,13 +278,14 @@ void onKeyboard(unsigned char key, int x, int y) {
         cout << "INFO: switch to SELECT mode" << endl;
     } else if (key == 'z') { //zoom out
 
-        currentWidth = currentWidth + (currentWidth / 10);
-        const int plus = (virtualWidth / 2) + (currentWidth / 2);
-        const int minus = (virtualWidth / 2) - (currentWidth / 2);
+        if (currentWidth + (currentWidth / 10) <= virtualWidth) {
+            currentWidth = currentWidth + (currentWidth / 10);
+            const int plus = (virtualWidth / 2) + (currentWidth / 2);
+            const int minus = (virtualWidth / 2) - (currentWidth / 2);
 
-        glLoadIdentity();
-        gluOrtho2D(minus, plus, minus, plus);
-
+            glLoadIdentity();
+            gluOrtho2D(minus, plus, minus, plus);
+        }
     }
 
     glutPostRedisplay();
