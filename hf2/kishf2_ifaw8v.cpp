@@ -226,8 +226,10 @@ void onDisplay() {
 void onKeyboard(unsigned char key, int x, int y) {
     if (key == 'e') { //edit mode
         programMode = EDIT;
+        cout << "INFO: switch to EDIT mode" << endl;
     } else if (key == 'p') { //select mode
         programMode = SELECT;
+        cout << "INFO: switch to SELECT mode" << endl;
     } else if (key == 'z') { //zoom out
     }
 
@@ -244,17 +246,17 @@ void onMouse(int button, int state, int x, int y) {
                     && clickedPos.x == x && clickedPos.y == y) { //0.5s && cursor not moved
                 if (programMode == EDIT) {
                     //end CR cpt input
-                    cout << "end curve" << endl;
+                    cout << "DEBUG: end curve" << endl;
                 }
             } else { //single click
-                cout << "single click" << endl;
+                cout << "DEBUG: single click" << endl;
                 //add CR cpt, if not contains 100 points already
                 if (programMode == EDIT) {
-                    cout << "--add CR cpt" << endl;
+                    cout << "DEBUG: --add CR cpt" << endl;
                 } else if (programMode == SELECT) {
                     //search for a point of a curve in 10x10px around click position
                     //if found save coords for moving
-                    cout << "--search for point from here: " << x << "; " << y << endl;
+                    cout << "DEBUG: --search for point from here: " << x << "; " << y << endl;
                 }
             }
 
@@ -264,17 +266,17 @@ void onMouse(int button, int state, int x, int y) {
         } else if (state == GLUT_UP) {
             //if moving: move curve to here
             if (programMode == SELECT) {
-                cout << "left up: if moving move curve to here: " << x << "; " << y << endl;
+                cout << "DEBUG: mouse left up: if moving move curve to here: " << x << "; " << y << endl;
             }
         }
     } else if (button == GLUT_RIGHT_BUTTON) {
         if (programMode == SELECT) {
             if (state == GLUT_DOWN) {
                 //search for a point of a curve in 10x10px around click position
-                cout << "right down: search for point from here: " << x << "; " << y << endl;
+                cout << "DEBUG: mouse right down: search for point from here: " << x << "; " << y << endl;
             } else if (state == GLUT_UP) {
                 //rotate with vector angle
-                cout << "right up: calc rotate from this coords: " << x << "; " << y << endl;
+                cout << "DEBUG: mouse right up: calc rotate from this coords: " << x << "; " << y << endl;
             }
         }
     }
