@@ -99,6 +99,13 @@ struct Vector {
         return Vector(y * v.z - z * v.y, z * v.x - x * v.z, x * v.y - y * v.x);
     }
 
+    Vector& operator=(const Vector & other) {
+        x = other.x;
+        y = other.y;
+        z = other.z;
+        return *this;
+    }
+
     double Length() {
         return sqrt(x * x + y * y + z * z);
     }
@@ -134,21 +141,61 @@ struct Color {
     }
 };
 
-//raster - gyilok!
-const int screenWidth = 600;
-const int screenHeight = 600;
-Color image[screenWidth*screenHeight];
+//mennyit tud kezelni a program
+const int NR_OF_CURVES = 10;
+const int NR_OF_CTRPs = 100;
+
+//class CatmullRomCurve {
+//private:
+//    double dt;
+//
+//    Vector r(double t, int i) {
+//        Vector res(0, 0);
+//        res = ((v[i]*(-1.0f) + v[i + 1] *3.0f + v[i + 2]*(-3.0f) + v[i + 3]) * t * t * t
+//                + (v[i]*(2.0f) + v[i + 1]*(-5.0f) + v[i + 2]*4.0f - v[i + 3]) * t * t
+//                + (v[i]*(-1.0f) + v[i + 2]) * t
+//                + v[i + 1] * 2.0f) * 0.5f;
+//        return res;
+//    }
+//public:
+//    Vector* v;
+//    bool showCtrlPts;
+//    int np;
+//
+//    CatmullRomCurve(int n) {
+//        np = n;
+//        dt = 0.025f;
+//    }
+//
+//    void draw() {
+//        glColor3f(1.0, 0.0, 0.0);
+//        glBegin(GL_LINE_STRIP);
+//        for (int i = 0; i < np - 3; ++i) {
+//            for (double t = 0.0f; t < 1.0f; t += dt) {
+//                Vector v = r(t, i);
+//                glVertex2f(v.x, v.y);
+//            }
+//        }
+//        glEnd();
+//    }
+//
+//    void addVector(Vector c) {
+//        if (np >= 99) return;
+//        this->v[np++] = c;
+//    }
+//};
+
+const double virtualWidth = 1000; //1m = 1000mm
+double currentWidth = 78;
 
 //fibonacci
 double fibonacci[100];
 
 //curves, control points
+int currentCurveIndex = 0;
 
 //colors of curves
 Color curveColors[10];
-
-//gyilok!
-const double VARIABLE_PIXEL_RATE = 100.0;
 
 long time_ = 0;
 long clickedTime = 0;
@@ -169,12 +216,6 @@ const bool fequals(float f1, float f2) {
     return false;
 }
 
-const Vector convertPixelsToGl(const Vector pixel) {
-    const double x = (pixel.x - screenWidth / 2.0) / ((double) screenWidth / 2.0);
-    const double y = (pixel.y - screenHeight / 2.0) / ((double) screenHeight / 2.0);
-    return Vector(x, y * -1.0);
-}
-
 /*
  * Binet form
  */
@@ -184,16 +225,23 @@ const double getFibonacciNr(int n) {
 }
 
 void onInitialization() {
-    glViewport(0, 0, screenWidth, screenHeight);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    const int plus = (virtualWidth / 2) + (currentWidth / 2);
+    const int minus = (virtualWidth / 2) - (currentWidth / 2);
+
+    gluOrtho2D(minus, //left
+            plus, //right
+            minus, //bottom
+            plus); //top
 
     //fill up array with fibonacci numbers - Binet form
     for (int i = 1; i <= 100; i++) {
         fibonacci[i] = getFibonacciNr(i);
-        //        cout << i << ": " << fibonacci[i] << endl;
     }
 
     //fill up array of curves' colors
-    curveColors[0] = Color(1.0, 1.0, 1.0); //black
+    curveColors[0] = Color(0.0, 0.0, 0.0); //black
     curveColors[1] = Color(1.0, 0.0, 0.0); //red
     curveColors[2] = Color(0.0, 1.0, 0.0); //green
     curveColors[3] = Color(0.0, 0.0, 1.0); //blue
@@ -209,14 +257,12 @@ void onDisplay() {
     glClearColor(0.8f, 0.8f, 0.8f, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    //glDrawPixels(screenWidth, screenHeight, GL_RGB, GL_FLOAT, image);
+    glColor3d(1.0, 0.0, 0.0);
+    glBegin(GL_TRIANGLES);
 
-    glBegin(GL_LINES);
-
-    //    Color c = lineColors[i / 2];
-    //    glColor3f(c.r, c.g, c.b);
-    //    glVertex2f(linesCoords[i].x, linesCoords[i].y);
-    //    glVertex2f(linesCoords[i + 1].x, linesCoords[i + 1].y);
+    glVertex2i(461 + 10, 461 + 5);
+    glVertex2i(539 - 10, 539 - 20);
+    glVertex2i(461, 539 - 40);
 
     glEnd();
 
@@ -231,17 +277,24 @@ void onKeyboard(unsigned char key, int x, int y) {
         programMode = SELECT;
         cout << "INFO: switch to SELECT mode" << endl;
     } else if (key == 'z') { //zoom out
+
+        currentWidth = currentWidth + (currentWidth / 10);
+        const int plus = (virtualWidth / 2) + (currentWidth / 2);
+        const int minus = (virtualWidth / 2) - (currentWidth / 2);
+
+        glLoadIdentity();
+        gluOrtho2D(minus, plus, minus, plus);
+
     }
 
     glutPostRedisplay();
-
 }
 
 void onMouse(int button, int state, int x, int y) {
 
     if (button == GLUT_LEFT) {
         if (state == GLUT_DOWN) {
-            //double click?
+
             if (time_ - clickedTime < 500
                     && clickedPos.x == x && clickedPos.y == y) { //0.5s && cursor not moved
                 if (programMode == EDIT) {
@@ -250,8 +303,8 @@ void onMouse(int button, int state, int x, int y) {
                 }
             } else { //single click
                 cout << "DEBUG: single click" << endl;
-                //add CR cpt, if not contains 100 points already
                 if (programMode == EDIT) {
+                    //add CR cpt, if not contains 100 points already
                     cout << "DEBUG: --add CR cpt" << endl;
                 } else if (programMode == SELECT) {
                     //search for a point of a curve in 10x10px around click position
