@@ -156,52 +156,105 @@ double fibonacci[NR_OF_CTRPs];
 
 class CatmullRomCurve {
 private:
-    double dt;
 
-    //do the MAGIC (CR r function)
-    //source: http://www.mvps.org/directx/articles/catmull/
+    Vector MAGIC(double t, int i) {
+        Vector a, b, c, d;
 
-    Vector MAGIC(const double t, const int i) {
-        Vector r;
-        r = ((vectors[i] * -1.0 + vectors[i + 1] * 3.0 + vectors[i + 2] * -3.0 + vectors[i + 3]) * pow(t, 3)
-                + (vectors[i] * 2.0 + vectors[i + 1] * -5.0 + vectors[i + 2] * 4.0 - vectors[i + 3]) * pow(t, 2)
-                + (vectors[i] * -1.0 + vectors[i + 2]) * t
-                + vectors[i + 1] * 2.0) * 0.5;
-        return r;
+        //        cout << "t=" << t << endl;
+        //        cout << "i=" << i << endl;
+
+        double t_i = fibonacci[i];
+        double t_i_plus_1 = fibonacci[i + 1];
+        double t_i_plus_2 = fibonacci[i + 2];
+        double t_i_minus_1 = fibonacci[i - 1];
+
+        //        cout << "t_i=" << t_i << endl;
+        //        cout << "t_i_plus_1=" << t_i_plus_1 << endl;
+        //        cout << "t_i_plus_2=" << t_i_plus_2 << endl;
+        //        cout << "t_i_minus_1=" << t_i_minus_1 << endl;
+
+        Vector f_i = ctrlPoints[i];
+        Vector f_i_plus_1 = ctrlPoints[i + 1];
+        Vector f_i_plus_2 = ctrlPoints[i + 2];
+        Vector f_i_minus_1 = ctrlPoints[i - 1];
+
+        //        cout << "f_i = " << f_i.x << " :: " << f_i.y << endl;
+        //        cout << "f_ip1 = " << f_i_plus_1.x << " :: " << f_i_plus_1.y << endl;
+        //        cout << "f_ip2 = " << f_i_plus_2.x << " :: " << f_i_plus_2.y << endl;
+        //        cout << "f_im1 = " << f_i_minus_1.x << " :: " << f_i_minus_1.y << endl;
+
+        Vector v_i = ((f_i - f_i_minus_1) * (1 / (t_i - t_i_minus_1)) +
+                (f_i_plus_1 - f_i) * (1 / (t_i_plus_1 - t_i))) * 0.5;
+
+        //        Vector temp1 = f_i - f_i_minus_1;
+        //        double temp2 = 1 / (t_i - t_i_minus_1);
+        //        Vector temp3 = temp1 * (1 / (t_i - t_i_minus_1));
+        //
+        //        cout << "temp1 = " << temp1.x << " :: " << temp1.y << endl;
+        //        cout << "temp2 = " << temp2 << endl;
+        //        cout << "temp3 = " << temp3.x << " :: " << temp3.y << endl;
+        //        cout << "v_i = " << v_i.x << " :: " << v_i.y << endl;
+
+        //szerintem nem jó: v_i(t+1) !!!
+        Vector v_i_plus_1 = ((f_i_plus_1 - f_i) * (1 / (t_i_plus_1 - t_i)) +
+                (f_i_plus_2 - f_i_plus_1) * (1 / (t_i_plus_2 - t_i_plus_1))) * 0.5;
+
+        d = f_i;
+        c = v_i;
+
+        b = ((f_i_plus_1 - f_i) * 3) * (1 / pow(t_i_plus_1 - t_i, 2)) -
+                (v_i_plus_1 + v_i * 2) * (1 / (t_i_plus_1 - t_i));
+
+        a = (v_i_plus_1 + v_i) * (1 / pow(t_i_plus_1 - t_i, 2)) -
+                ((f_i_plus_1 - f_i) * 2) * (1 / pow(t_i_plus_1 - t_i, 3));
+
+        //b és v_i_plus_1 fuggnek egymastol
+        //        Vector v_i_plus_1 = 3 * a * pow(t_i_plus_1 - t_i) +
+        //                2 * b * pow(t_i_plus_1 - t_i, 2) * c;
+
+        // t{i} <= t < t{i+1}
+        //t{i} = fibonacci[i]
+        Vector f_t = a * pow(t - t_i, 3) + b * pow(t - t_i, 2) +
+                c * (t - t_i) + d;
+
+        //        cout << "f_t = " << f_t.x << " :: " << f_t.y << endl;
+
+        return f_t;
     }
 public:
-    Vector vectors[NR_OF_CTRPs];
+    Vector ctrlPoints[NR_OF_CTRPs];
     int numOfPoints;
 
     CatmullRomCurve() { //: dt(0.025), numOfPoints(0)
-        dt = 0.025;
         numOfPoints = 0;
     }
 
     void draw(const Color c) {
         glColor3f(c.r, c.g, c.b);
         glBegin(GL_LINE_STRIP);
-        for (int i = 0; i < numOfPoints - 3; ++i) {
-            for (double t = 0.0; t < 1.0; t += dt) {
-                Vector tmp = MAGIC(t, i);
-                glVertex2d(tmp.x, tmp.y);
+        for (int i = 1; i < numOfPoints - 2; ++i) {
+            double rate = (fibonacci[i + 1] - fibonacci[i]) / 100.0;
+            for (double t = fibonacci[i]; t < fibonacci[i + 1]; t += rate) {
+                Vector v = MAGIC(t, i);
+                glVertex2d(v.x, v.y);
             }
+
         }
         glEnd();
 
         glBegin(GL_TRIANGLES);
         glColor3d(0.0, 0.0, 1.0);
         for (int i = 0; i < numOfPoints; i++) {
-            glVertex2d(vectors[i].x, vectors[i].y);
-            glVertex2d(vectors[i].x - 1, vectors[i].y - 1);
-            glVertex2d(vectors[i].x + 1, vectors[i].y - 1);
+            glVertex2d(ctrlPoints[i].x, ctrlPoints[i].y);
+            glVertex2d(ctrlPoints[i].x - 1, ctrlPoints[i].y - 1);
+            glVertex2d(ctrlPoints[i].x + 1, ctrlPoints[i].y - 1);
         }
         glEnd();
     }
 
     void addVector(const Vector c) {
         if (numOfPoints < NR_OF_CTRPs) {
-            vectors[numOfPoints++] = c;
+            ctrlPoints[numOfPoints++] = c;
         }
     }
 };
@@ -254,7 +307,7 @@ void onInitialization() {
             plus); //top
 
     //fill up array with fibonacci numbers - Binet form
-    for (int i = 1; i <= NR_OF_CTRPs; i++) {
+    for (int i = 2; i <= NR_OF_CTRPs; i++) {
         fibonacci[i - 1] = getFibonacciNr(i);
     }
 
@@ -338,7 +391,11 @@ void onMouse(int button, int state, int x, int y) {
                     if (currentCurveIndex < NR_OF_CURVES &&
                             crCurves[currentCurveIndex].numOfPoints < NR_OF_CTRPs - 1) {
                         cout << "DEBUG: --add CR cpt" << endl;
-                        crCurves[currentCurveIndex].addVector(Vector(worldXcenter, worldYcenter));
+                        Vector newVector = Vector(worldXcenter, worldYcenter);
+                        crCurves[currentCurveIndex].addVector(newVector);
+                        cout << "ctrlPoints[" << currentCurveIndex << "][";
+                        cout << crCurves[currentCurveIndex].numOfPoints - 1 << "]=";
+                        cout << newVector.x << " :: " << newVector.y << endl;
                     }
 
                 } else if (programMode == SELECT) {
