@@ -236,18 +236,18 @@ public:
             double rate = (fibonacci[i + 1] - fibonacci[i]) / 100.0;
             for (double t = fibonacci[i]; t < fibonacci[i + 1]; t += rate) {
                 Vector v = MAGIC(t, i);
-                glVertex2d(v.x, v.y);
+                glVertex2f(v.x, v.y);
             }
 
         }
         glEnd();
 
         glBegin(GL_TRIANGLES);
-        glColor3d(0.0, 0.0, 1.0);
+        glColor3f(0.0, 0.0, 1.0);
         for (int i = 0; i < numOfPoints; i++) {
-            glVertex2d(ctrlPoints[i].x, ctrlPoints[i].y);
-            glVertex2d(ctrlPoints[i].x - 1, ctrlPoints[i].y - 1);
-            glVertex2d(ctrlPoints[i].x + 1, ctrlPoints[i].y - 1);
+            glVertex2f(ctrlPoints[i].x, ctrlPoints[i].y);
+            glVertex2f(ctrlPoints[i].x - 1, ctrlPoints[i].y - 1);
+            glVertex2f(ctrlPoints[i].x + 1, ctrlPoints[i].y - 1);
         }
         glEnd();
     }
@@ -278,7 +278,7 @@ enum MODE {
     EDIT, SELECT
 };
 
-MODE programMode = EDIT; //program starts in select mode --- TODO!!! starts with SELECT
+MODE programMode = SELECT;
 
 const bool fequals(float f1, float f2) {
     if (fabs(f1 - f2) < 0.001) return true;
@@ -391,8 +391,10 @@ void onMouse(int button, int state, int x, int y) {
                     if (currentCurveIndex < NR_OF_CURVES &&
                             crCurves[currentCurveIndex].numOfPoints < NR_OF_CTRPs - 1) {
                         cout << "DEBUG: --add CR cpt" << endl;
+
                         Vector newVector = Vector(worldXcenter, worldYcenter);
                         crCurves[currentCurveIndex].addVector(newVector);
+
                         cout << "ctrlPoints[" << currentCurveIndex << "][";
                         cout << crCurves[currentCurveIndex].numOfPoints - 1 << "]=";
                         cout << newVector.x << " :: " << newVector.y << endl;
