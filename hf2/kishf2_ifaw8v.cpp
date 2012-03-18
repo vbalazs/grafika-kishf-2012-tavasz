@@ -154,6 +154,16 @@ const int NR_OF_CTRPs = 100; //number of control points / curve
 //fibonacci
 double fibonacci[NR_OF_CTRPs];
 
+//used methods in CRC ----------------------------------------------------------
+
+Vector getPixelFromWorldCoord(Vector worldCoord) {
+    double pixelX = (worldCoord.x - virtualWidth / 2 + currentWidth / 2) * (screenWidth / currentWidth);
+    double pixelY = screenWidth - (worldCoord.y - virtualWidth / 2 + currentWidth / 2) * (screenWidth / currentWidth);
+
+    return Vector(pixelX, pixelY);
+}
+//------------------------------------------------------------------------------
+
 class CatmullRomCurve {
 private:
 
@@ -257,6 +267,23 @@ public:
             ctrlPoints[numOfPoints++] = c;
         }
     }
+
+    bool isPointNearby(Vector clickedPixel) {
+        for (int i = 1; i < numOfPoints - 2; ++i) {
+            double rate = (fibonacci[i + 1] - fibonacci[i]) / 100.0;
+            for (double t = fibonacci[i]; t < fibonacci[i + 1]; t += rate) {
+                Vector curvePx = getPixelFromWorldCoord(MAGIC(t, i));
+
+                if (fabs(curvePx.x - clickedPixel.x) <= 10
+                        && fabs(curvePx.y - clickedPixel.y) <= 10) {
+
+                    cout << "FOUND POINT -> RETURN TRUE" << endl;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
 };
 
 //curves, control points
@@ -269,7 +296,13 @@ Color curveColors[NR_OF_CURVES];
 long time_ = 0;
 long clickedTime = 0;
 Vector clickedPos;
-bool working = false;
+
+//moving
+bool isMoving = false;
+int movingCurveIndex = -1;
+Vector movingFrom;
+
+//rotate
 
 /*
  * Program mode
@@ -291,6 +324,56 @@ const bool fequals(float f1, float f2) {
 const double getFibonacciNr(int n) {
     double sqrt5 = sqrt(5);
     return (pow(1 + sqrt5, n) - pow(1 - sqrt5, n)) / (sqrt5 * pow(2, n));
+}
+
+Vector getWorldCoordsFromPixels(const int x, const int y) {
+    double worldXFrom0 = (currentWidth / screenWidth) * x;
+    double worldYFrom0 = ((currentWidth / screenWidth) * y - currentWidth) * -1.0f;
+
+    double worldXFromCenter = (virtualWidth / 2) - (currentWidth / 2) + worldXFrom0;
+    double worldYFromCenter = (virtualWidth / 2) - (currentWidth / 2) + worldYFrom0;
+
+    return Vector(worldXFromCenter, worldYFromCenter);
+}
+
+Vector getWorldCoordsFromPixels(Vector pixel) {
+    return getWorldCoordsFromPixels(pixel.x, pixel.y);
+}
+
+void beginMoving(const Vector clickedPixel) {
+    if (!isMoving) {
+        for (int i = 0; i < currentCurveIndex; ++i) {
+            if (crCurves[i].isPointNearby(clickedPixel)) {
+                isMoving = true;
+                cout << "MOVING curve index: " << i << endl;
+                movingCurveIndex = i;
+                movingFrom = getWorldCoordsFromPixels(clickedPixel);
+                break;
+            }
+        }
+    }
+}
+
+void endMoving(const Vector movingEndWorldPos) {
+    if (isMoving && movingCurveIndex >= 0 && movingCurveIndex < NR_OF_CURVES) {
+
+        cout << "endMoving" << endl;
+
+        //move curve
+        CatmullRomCurve& curve = crCurves[movingCurveIndex];
+        for (int i = 0; i < curve.numOfPoints; ++i) {
+            cout << "point: " << i << endl;
+            cout << "from: " << curve.ctrlPoints[i].x << " :: " << curve.ctrlPoints[i].y << endl;
+
+            curve.ctrlPoints[i].x += movingEndWorldPos.x - movingFrom.x;
+            curve.ctrlPoints[i].y += movingEndWorldPos.y - movingFrom.y;
+
+            cout << "to: " << curve.ctrlPoints[i].x << " :: " << curve.ctrlPoints[i].y << endl;
+        }
+
+        movingCurveIndex = -1;
+        isMoving = false;
+    }
 }
 
 void onInitialization() {
@@ -373,36 +456,41 @@ void onMouse(int button, int state, int x, int y) {
                     //end CR cpt input
                     cout << "DEBUG: end curve" << endl;
 
+                    if (crCurves[currentCurveIndex].numOfPoints < NR_OF_CTRPs - 1) {
+                        Vector clickedWorldPos = getWorldCoordsFromPixels(x, y);
+                        crCurves[currentCurveIndex].addVector(clickedWorldPos);
+                    }
+
                     if (currentCurveIndex < NR_OF_CURVES) {
                         ++currentCurveIndex; //next curve
                     }
                 }
             } else { //single click
+
                 cout << "DEBUG: single click" << endl;
                 if (programMode == EDIT) {
-
-                    double worldXFrom0 = (currentWidth / screenWidth) * x;
-                    double worldYFrom0 = ((currentWidth / screenWidth) * y - currentWidth) * -1.0f;
-
-                    double worldXcenter = (virtualWidth / 2) - (currentWidth / 2) + worldXFrom0;
-                    double worldYcenter = (virtualWidth / 2) - (currentWidth / 2) + worldYFrom0;
 
                     //add CR cpt, if not contains 100 points already
                     if (currentCurveIndex < NR_OF_CURVES &&
                             crCurves[currentCurveIndex].numOfPoints < NR_OF_CTRPs - 1) {
                         cout << "DEBUG: --add CR cpt" << endl;
 
-                        Vector newVector = Vector(worldXcenter, worldYcenter);
-                        crCurves[currentCurveIndex].addVector(newVector);
+                        Vector clickedWorldPos = getWorldCoordsFromPixels(x, y);
+                        crCurves[currentCurveIndex].addVector(clickedWorldPos);
+
+                        if (crCurves[currentCurveIndex].numOfPoints == 1) {
+                            crCurves[currentCurveIndex].addVector(clickedWorldPos);
+                        }
 
                         cout << "ctrlPoints[" << currentCurveIndex << "][";
                         cout << crCurves[currentCurveIndex].numOfPoints - 1 << "]=";
-                        cout << newVector.x << " :: " << newVector.y << endl;
+                        cout << clickedWorldPos.x << " :: " << clickedWorldPos.y << endl;
                     }
 
                 } else if (programMode == SELECT) {
                     //search for a point of a curve in 10x10px around click position
                     //if found save coords for moving
+                    beginMoving(Vector(x, y));
                     cout << "DEBUG: --search for point from here: " << x << "; " << y << endl;
                 }
             }
@@ -410,11 +498,10 @@ void onMouse(int button, int state, int x, int y) {
             clickedTime = time_;
             clickedPos.x = x;
             clickedPos.y = y;
-        } else if (state == GLUT_UP) {
+        } else if (isMoving && state == GLUT_UP && programMode == SELECT) {
             //if moving: move curve to here
-            if (programMode == SELECT) {
-                cout << "DEBUG: mouse left up: if moving move curve to here: " << x << "; " << y << endl;
-            }
+            cout << "DEBUG: mouse left up: if moving move curve to here: " << x << "; " << y << endl;
+            endMoving(getWorldCoordsFromPixels(x, y));
         }
     } else if (button == GLUT_RIGHT_BUTTON) {
         if (programMode == SELECT) {
@@ -431,34 +518,8 @@ void onMouse(int button, int state, int x, int y) {
     glutPostRedisplay();
 }
 
-void simulateWorld(long tstart, long tend) {
-    float dt = 50;
-    for (float ts = tstart; ts < tend; ts += dt) {
-        float te;
-        if (tend >= ts + dt) {
-            te = ts + dt;
-        } else {
-
-            te = tend;
-        }
-
-        //work
-
-    }
-}
-
 void onIdle() {
-
-    if (!working) {
-
-        working = true;
-        long old_time = time_;
-        time_ = glutGet(GLUT_ELAPSED_TIME);
-
-        simulateWorld(old_time, time_);
-
-        working = false;
-    }
+    time_ = glutGet(GLUT_ELAPSED_TIME);
 
     glutPostRedisplay();
 }
