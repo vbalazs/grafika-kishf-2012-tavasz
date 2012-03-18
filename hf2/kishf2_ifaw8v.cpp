@@ -303,6 +303,9 @@ int movingCurveIndex = -1;
 Vector movingFrom;
 
 //rotate
+bool isRotate = false;
+int rotatingCurveIndex = -1;
+Vector rotateAround;
 
 /*
  * Program mode
@@ -336,7 +339,7 @@ Vector getWorldCoordsFromPixels(const int x, const int y) {
     return Vector(worldXFromCenter, worldYFromCenter);
 }
 
-Vector getWorldCoordsFromPixels(Vector pixel) {
+Vector getWorldCoordsFromPixel(Vector pixel) {
     return getWorldCoordsFromPixels(pixel.x, pixel.y);
 }
 
@@ -347,7 +350,7 @@ void beginMoving(const Vector clickedPixel) {
                 isMoving = true;
                 cout << "MOVING curve index: " << i << endl;
                 movingCurveIndex = i;
-                movingFrom = getWorldCoordsFromPixels(clickedPixel);
+                movingFrom = getWorldCoordsFromPixel(clickedPixel);
                 break;
             }
         }
@@ -373,6 +376,51 @@ void endMoving(const Vector movingEndWorldPos) {
 
         movingCurveIndex = -1;
         isMoving = false;
+    }
+}
+
+void beginRotate(const Vector clickedPixel) {
+    if (!isRotate) {
+        for (int i = 0; i < currentCurveIndex; ++i) {
+            if (crCurves[i].isPointNearby(clickedPixel)) {
+                isRotate = true;
+                cout << "ROTATE curve index: " << i << endl;
+                rotatingCurveIndex = i;
+                rotateAround = getWorldCoordsFromPixel(clickedPixel);
+                break;
+            }
+        }
+    }
+}
+
+void endRotate(const Vector rotateEndWorldPos) {
+    if (isRotate && rotatingCurveIndex >= 0 && rotatingCurveIndex < NR_OF_CURVES) {
+        cout << "endRotate" << endl;
+
+        //rotate curve
+        CatmullRomCurve& curve = crCurves[rotatingCurveIndex];
+        for (int i = 0; i < curve.numOfPoints; ++i) {
+
+            double angle = rotateEndWorldPos.x - rotateAround.x;
+
+            cout << "point: " << i << endl;
+            cout << "from: " << curve.ctrlPoints[i].x << " :: " << curve.ctrlPoints[i].y << endl;
+            cout << "angle: " << angle << endl;
+
+            double x_ = curve.ctrlPoints[i].x;
+            double y_ = curve.ctrlPoints[i].y;
+
+            curve.ctrlPoints[i].x = x_ + (x_ - rotateAround.x) * cos(angle) -
+                    (y_ - rotateAround.y) * sin(angle);
+
+            curve.ctrlPoints[i].y = y_ + (x_ - rotateAround.x) * sin(angle) +
+                    (y_ - rotateAround.y) * cos(angle);
+
+            cout << "to: " << curve.ctrlPoints[i].x << " :: " << curve.ctrlPoints[i].y << endl;
+        }
+
+        rotatingCurveIndex = -1;
+        isRotate = false;
     }
 }
 
@@ -508,9 +556,11 @@ void onMouse(int button, int state, int x, int y) {
             if (state == GLUT_DOWN) {
                 //search for a point of a curve in 10x10px around click position
                 cout << "DEBUG: mouse right down: search for point from here: " << x << "; " << y << endl;
+                beginRotate(Vector(x, y));
             } else if (state == GLUT_UP) {
                 //rotate with vector angle
                 cout << "DEBUG: mouse right up: calc rotate from this coords: " << x << "; " << y << endl;
+                endRotate(getWorldCoordsFromPixels(x, y));
             }
         }
     }
