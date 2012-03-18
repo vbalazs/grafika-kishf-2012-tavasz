@@ -1,0 +1,16 @@
+Feladat leírása:
+Készítsen 2D rajzoló programot.
+
+A modellt egy 1m x 1m nagyságú virtuális lapra rögzítheti, amelyből a kameraablak belsejébe eső rész látható.
+
+A program indulásakor a kameraablak 78mm x 78mm területű részt lát a lap közepéből. Az 'e' billentyű lenyomásával a programot "edit" módba lehet kapcsolni, amelyben bal egérgomb lenyomások egy Catmull-Rom spline kontrolpontjait viszik be. Dupla kattintásra (az egér gomb kétszeri lenyomása 0.5 sec-en belül az egér megmozdítása nélkül) a vonalrajzolás befejeződik, és a program várja a következő vonalat.
+
+A Catmull-Rom spline vezérlőpontjainak paraméterértékei automatikusan a Fibonacci sorozat értékeit veszik fel (t_0=1, t_1=2, t_3=3, t_4=5, t_5=8, ...). A görbét minden egéresemény és ablak érvényesítéskor újra kell rajzolni. A rajzolás előtt reptében kell vektorizálni, a görbék vektorizált változatának tárolása tömbben, vagy bármely egyéb adatstruktúrában tilos. A vektorizációnak a virtuális világban kell nagyjából egyenletesnek lennie, azaz minden két vezérlőpont közötti görbeszegmenst ugyanannyi szakasszal kell közelíteni. A program max 10 görbét képes kezelni, egy görbe max 100 vezérlőpontot tartalmazhat.
+
+A görbék és a háttér színe szabadon megválasztható, mindenkinek egyedi, a többitől lényegesen eltérő színe legyen.
+
+A 'p' billentyű hatására a program "kiválasztás" módba vált, amikor az egér balgombjával egy görbére rákattintva a görbe elmozdítható, mégpedig a gomb elengedése és lenyomása helyvektorainak a különbségével. A görbére kattintás akkor teljesül, ha az egér lenyomásakor a kurzor körüli 10 pixel x 10 pixel-es négyzetben van a görbének pontja. Ugyanezen műveletet az egér jobb gombjával végrehajtva a kiválasztáskori kurzor körül a görbe elforgatható, mégpedig az elengedéskori kurzor helyének x pixel koordinátája és a kiválasztáskori x koordináták különbségének megfelelő fokkal.
+
+Bármely módban a 'z' billentyű hatására a kamera ablak mérete 10%-kal nő.
+
+A forráskód licensze: GPLv3
