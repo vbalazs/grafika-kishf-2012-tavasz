@@ -106,6 +106,14 @@ struct Vector {
         return *this;
     }
 
+    Vector normalize() {
+        double a = Length();
+        if (a == 0) {
+            return *this;
+        }
+        return (*this * (1 / a));
+    }
+
     double Length() {
         return sqrt(x * x + y * y + z * z);
     }
@@ -170,40 +178,18 @@ private:
     Vector MAGIC(double t, int i) {
         Vector a, b, c, d;
 
-        //        cout << "t=" << t << endl;
-        //        cout << "i=" << i << endl;
-
         double t_i = fibonacci[i];
         double t_i_plus_1 = fibonacci[i + 1];
         double t_i_plus_2 = fibonacci[i + 2];
         double t_i_minus_1 = fibonacci[i - 1];
-
-        //        cout << "t_i=" << t_i << endl;
-        //        cout << "t_i_plus_1=" << t_i_plus_1 << endl;
-        //        cout << "t_i_plus_2=" << t_i_plus_2 << endl;
-        //        cout << "t_i_minus_1=" << t_i_minus_1 << endl;
 
         Vector f_i = ctrlPoints[i];
         Vector f_i_plus_1 = ctrlPoints[i + 1];
         Vector f_i_plus_2 = ctrlPoints[i + 2];
         Vector f_i_minus_1 = ctrlPoints[i - 1];
 
-        //        cout << "f_i = " << f_i.x << " :: " << f_i.y << endl;
-        //        cout << "f_ip1 = " << f_i_plus_1.x << " :: " << f_i_plus_1.y << endl;
-        //        cout << "f_ip2 = " << f_i_plus_2.x << " :: " << f_i_plus_2.y << endl;
-        //        cout << "f_im1 = " << f_i_minus_1.x << " :: " << f_i_minus_1.y << endl;
-
         Vector v_i = ((f_i - f_i_minus_1) * (1 / (t_i - t_i_minus_1)) +
                 (f_i_plus_1 - f_i) * (1 / (t_i_plus_1 - t_i))) * 0.5;
-
-        //        Vector temp1 = f_i - f_i_minus_1;
-        //        double temp2 = 1 / (t_i - t_i_minus_1);
-        //        Vector temp3 = temp1 * (1 / (t_i - t_i_minus_1));
-        //
-        //        cout << "temp1 = " << temp1.x << " :: " << temp1.y << endl;
-        //        cout << "temp2 = " << temp2 << endl;
-        //        cout << "temp3 = " << temp3.x << " :: " << temp3.y << endl;
-        //        cout << "v_i = " << v_i.x << " :: " << v_i.y << endl;
 
         //szerintem nem jó: v_i(t+1) !!!
         Vector v_i_plus_1 = ((f_i_plus_1 - f_i) * (1 / (t_i_plus_1 - t_i)) +
@@ -218,16 +204,10 @@ private:
         a = (v_i_plus_1 + v_i) * (1 / pow(t_i_plus_1 - t_i, 2)) -
                 ((f_i_plus_1 - f_i) * 2) * (1 / pow(t_i_plus_1 - t_i, 3));
 
-        //b és v_i_plus_1 fuggnek egymastol
-        //        Vector v_i_plus_1 = 3 * a * pow(t_i_plus_1 - t_i) +
-        //                2 * b * pow(t_i_plus_1 - t_i, 2) * c;
-
         // t{i} <= t < t{i+1}
         //t{i} = fibonacci[i]
         Vector f_t = a * pow(t - t_i, 3) + b * pow(t - t_i, 2) +
                 c * (t - t_i) + d;
-
-        //        cout << "f_t = " << f_t.x << " :: " << f_t.y << endl;
 
         return f_t;
     }
@@ -235,7 +215,7 @@ public:
     Vector ctrlPoints[NR_OF_CTRPs];
     int numOfPoints;
 
-    CatmullRomCurve() { //: dt(0.025), numOfPoints(0)
+    CatmullRomCurve() {
         numOfPoints = 0;
     }
 
@@ -393,7 +373,7 @@ void beginRotate(const Vector clickedPixel) {
     }
 }
 
-void endRotate(const Vector rotateEndWorldPos) {
+void endRotate(Vector rotateEndWorldPos) {
     if (isRotate && rotatingCurveIndex >= 0 && rotatingCurveIndex < NR_OF_CURVES) {
         cout << "endRotate" << endl;
 
@@ -401,7 +381,11 @@ void endRotate(const Vector rotateEndWorldPos) {
         CatmullRomCurve& curve = crCurves[rotatingCurveIndex];
         for (int i = 0; i < curve.numOfPoints; ++i) {
 
-            double angle = rotateEndWorldPos.x - rotateAround.x;
+            Vector t1 = rotateEndWorldPos;
+            t1.normalize();
+            Vector t2 = rotateAround;
+            t2.normalize();
+            double angle = t1.x - t2.x;
 
             cout << "point: " << i << endl;
             cout << "from: " << curve.ctrlPoints[i].x << " :: " << curve.ctrlPoints[i].y << endl;
