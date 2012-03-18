@@ -141,61 +141,77 @@ struct Color {
     }
 };
 
-//mennyit tud kezelni a program
-const int NR_OF_CURVES = 10;
-const int NR_OF_CTRPs = 100;
+//------------------------------------------------------------------------------
 
-//class CatmullRomCurve {
-//private:
-//    double dt;
-//
-//    Vector r(double t, int i) {
-//        Vector res(0, 0);
-//        res = ((v[i]*(-1.0f) + v[i + 1] *3.0f + v[i + 2]*(-3.0f) + v[i + 3]) * t * t * t
-//                + (v[i]*(2.0f) + v[i + 1]*(-5.0f) + v[i + 2]*4.0f - v[i + 3]) * t * t
-//                + (v[i]*(-1.0f) + v[i + 2]) * t
-//                + v[i + 1] * 2.0f) * 0.5f;
-//        return res;
-//    }
-//public:
-//    Vector* v;
-//    bool showCtrlPts;
-//    int np;
-//
-//    CatmullRomCurve(int n) {
-//        np = n;
-//        dt = 0.025f;
-//    }
-//
-//    void draw() {
-//        glColor3f(1.0, 0.0, 0.0);
-//        glBegin(GL_LINE_STRIP);
-//        for (int i = 0; i < np - 3; ++i) {
-//            for (double t = 0.0f; t < 1.0f; t += dt) {
-//                Vector v = r(t, i);
-//                glVertex2f(v.x, v.y);
-//            }
-//        }
-//        glEnd();
-//    }
-//
-//    void addVector(Vector c) {
-//        if (np >= 99) return;
-//        this->v[np++] = c;
-//    }
-//};
+const int screenWidth = 600;
 
 const double virtualWidth = 1000; //1m = 1000mm
 double currentWidth = 78;
 
+const int NR_OF_CURVES = 10;
+const int NR_OF_CTRPs = 100; //number of control points / curve
+
 //fibonacci
-double fibonacci[100];
+double fibonacci[NR_OF_CTRPs];
+
+class CatmullRomCurve {
+private:
+    double dt;
+
+    //do the MAGIC (CR r function)
+    //source: http://www.mvps.org/directx/articles/catmull/
+
+    Vector MAGIC(const double t, const int i) {
+        Vector r;
+        r = ((vectors[i] * -1.0 + vectors[i + 1] * 3.0 + vectors[i + 2] * -3.0 + vectors[i + 3]) * pow(t, 3)
+                + (vectors[i] * 2.0 + vectors[i + 1] * -5.0 + vectors[i + 2] * 4.0 - vectors[i + 3]) * pow(t, 2)
+                + (vectors[i] * -1.0 + vectors[i + 2]) * t
+                + vectors[i + 1] * 2.0) * 0.5;
+        return r;
+    }
+public:
+    Vector vectors[NR_OF_CTRPs];
+    int numOfPoints;
+
+    CatmullRomCurve() { //: dt(0.025), numOfPoints(0)
+        dt = 0.025;
+        numOfPoints = 0;
+    }
+
+    void draw(const Color c) {
+        glColor3f(c.r, c.g, c.b);
+        glBegin(GL_LINE_STRIP);
+        for (int i = 0; i < numOfPoints - 3; ++i) {
+            for (double t = 0.0; t < 1.0; t += dt) {
+                Vector tmp = MAGIC(t, i);
+                glVertex2d(tmp.x, tmp.y);
+            }
+        }
+        glEnd();
+
+        glBegin(GL_TRIANGLES);
+        glColor3d(0.0, 0.0, 1.0);
+        for (int i = 0; i < numOfPoints; i++) {
+            glVertex2d(vectors[i].x, vectors[i].y);
+            glVertex2d(vectors[i].x - 1, vectors[i].y - 1);
+            glVertex2d(vectors[i].x + 1, vectors[i].y - 1);
+        }
+        glEnd();
+    }
+
+    void addVector(const Vector c) {
+        if (numOfPoints < NR_OF_CTRPs) {
+            vectors[numOfPoints++] = c;
+        }
+    }
+};
 
 //curves, control points
 int currentCurveIndex = 0;
+CatmullRomCurve crCurves[NR_OF_CURVES];
 
 //colors of curves
-Color curveColors[10];
+Color curveColors[NR_OF_CURVES];
 
 long time_ = 0;
 long clickedTime = 0;
@@ -209,7 +225,7 @@ enum MODE {
     EDIT, SELECT
 };
 
-MODE programMode = SELECT; //program starts in select mode
+MODE programMode = EDIT; //program starts in select mode --- TODO!!! starts with SELECT
 
 const bool fequals(float f1, float f2) {
     if (fabs(f1 - f2) < 0.001) return true;
@@ -225,6 +241,8 @@ const double getFibonacciNr(int n) {
 }
 
 void onInitialization() {
+    glViewport(0, 0, screenWidth, screenWidth);
+
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     const int plus = (virtualWidth / 2) + (currentWidth / 2);
@@ -236,8 +254,8 @@ void onInitialization() {
             plus); //top
 
     //fill up array with fibonacci numbers - Binet form
-    for (int i = 1; i <= 100; i++) {
-        fibonacci[i] = getFibonacciNr(i);
+    for (int i = 1; i <= NR_OF_CTRPs; i++) {
+        fibonacci[i - 1] = getFibonacciNr(i);
     }
 
     //fill up array of curves' colors
@@ -257,14 +275,9 @@ void onDisplay() {
     glClearColor(0.8f, 0.8f, 0.8f, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glColor3d(1.0, 0.0, 0.0);
-    glBegin(GL_TRIANGLES);
-
-    glVertex2i(461 + 10, 461 + 5);
-    glVertex2i(539 - 10, 539 - 20);
-    glVertex2i(461, 539 - 40);
-
-    glEnd();
+    for (int i = 0; i < currentCurveIndex + 1; i++) {
+        crCurves[i].draw(curveColors[i]);
+    }
 
     glutSwapBuffers();
 }
@@ -278,14 +291,19 @@ void onKeyboard(unsigned char key, int x, int y) {
         cout << "INFO: switch to SELECT mode" << endl;
     } else if (key == 'z') { //zoom out
 
-        if (currentWidth + (currentWidth / 10) <= virtualWidth) {
+        if (currentWidth + (currentWidth / 10) > virtualWidth) { //10%
+            currentWidth = virtualWidth;
+        } else {
             currentWidth = currentWidth + (currentWidth / 10);
-            const int plus = (virtualWidth / 2) + (currentWidth / 2);
-            const int minus = (virtualWidth / 2) - (currentWidth / 2);
-
-            glLoadIdentity();
-            gluOrtho2D(minus, plus, minus, plus);
         }
+
+        const int plus = (virtualWidth / 2) + (currentWidth / 2);
+        const int minus = (virtualWidth / 2) - (currentWidth / 2);
+
+        glLoadIdentity();
+        gluOrtho2D(minus, plus, minus, plus);
+
+        cout << "INFO: zoomed out. size: " << currentWidth << endl;
     }
 
     glutPostRedisplay();
@@ -301,12 +319,28 @@ void onMouse(int button, int state, int x, int y) {
                 if (programMode == EDIT) {
                     //end CR cpt input
                     cout << "DEBUG: end curve" << endl;
+
+                    if (currentCurveIndex < NR_OF_CURVES) {
+                        ++currentCurveIndex; //next curve
+                    }
                 }
             } else { //single click
                 cout << "DEBUG: single click" << endl;
                 if (programMode == EDIT) {
+
+                    double worldXFrom0 = (currentWidth / screenWidth) * x;
+                    double worldYFrom0 = ((currentWidth / screenWidth) * y - currentWidth) * -1.0f;
+
+                    double worldXcenter = (virtualWidth / 2) - (currentWidth / 2) + worldXFrom0;
+                    double worldYcenter = (virtualWidth / 2) - (currentWidth / 2) + worldYFrom0;
+
                     //add CR cpt, if not contains 100 points already
-                    cout << "DEBUG: --add CR cpt" << endl;
+                    if (currentCurveIndex < NR_OF_CURVES &&
+                            crCurves[currentCurveIndex].numOfPoints < NR_OF_CTRPs - 1) {
+                        cout << "DEBUG: --add CR cpt" << endl;
+                        crCurves[currentCurveIndex].addVector(Vector(worldXcenter, worldYcenter));
+                    }
+
                 } else if (programMode == SELECT) {
                     //search for a point of a curve in 10x10px around click position
                     //if found save coords for moving
